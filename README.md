@@ -1,7 +1,13 @@
 # cl-bst
 
 CL-BST is a generic typed binary-search-tree implementation and
-associated finite-map implementation made using template macros.
+associated finite-map implementation made using template macros.  To
+use, just load "bst.lisp" or "finite-map.lisp" (the latter will
+automatically load the former) and use the :bst or :fm/:finite-map
+package(s).  NOTE: Because these data structures use custom-instanced
+types and structs, they will not operate properly outside of the
+lexical scopes in which they are instantiated.  Attempting to access
+the structures in such a way may generate compiler warnings.
 
 ## MAKE-BST template macro:
 Create a typed binary search tree using a custom template tree type.
