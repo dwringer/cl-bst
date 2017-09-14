@@ -203,6 +203,26 @@ Nondestructive insert record to the finite map FM binding key K to value V.
                         :RIGHT NIL)))
 ```
 
+### finite-map-unbind (k fm)
+Return finite map copy w/its BST stripped of records w/key K.
+
+#### Parameters:
+   K: Key of record to be matched and unbound  
+   FM: A finite map from which the record of key K is to be removed.  
+
+#### Returns:
+   A new finite map built from FM except for records matching key K.
+
+#### Example:
+```
+   > (finite-map-unbind 'a *fm*)
+   #S(FINITE-MAP-986
+      :BST #S(BST-1000
+              :LEFT NIL
+              :VALUE #S(FINITE-MAP-RECORD-986 :KEY B :VALUE 3)
+              :RIGHT NIL))
+```
+
 ### finite-map-lookup (k fm)
 If finite map FM contains a record with key K, retrieve its associated value.
 

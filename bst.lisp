@@ -106,10 +106,7 @@
 ;;
 ;;   Example:
 ;;    > (bst-remove "world" *t*)
-;;    #S(BST-1173
-;;       :LEFT NIL
-;;       :VALUE "hello"
-;;       :RIGHT NIL)
+;;    #S(BST-1173 :LEFT NIL :VALUE "hello" :RIGHT NIL)
 
 (defgeneric bst-member (x tr))
 ;; If found, retrieve the subtree of binary search tree TR containing element X.

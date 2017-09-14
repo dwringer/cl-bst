@@ -84,6 +84,24 @@
 ;;                         :VALUE #S(FINITE-MAP-RECORD-986 :KEY B :VALUE 3)
 ;;                         :RIGHT NIL)))
 
+(defgeneric finite-map-unbind (k fm))
+;; Return finite map copy w/its BST stripped of records w/key K.
+;;
+;;  Parameters:
+;;    K: Key of record to be matched and unbound
+;;    FM: A finite map from which the record of key K is to be removed.
+;;
+;;  Returns:
+;;    A new finite map built from FM except for records matching key K.
+;;
+;;  Example:
+;;    > (finite-map-unbind 'a *fm*)
+;;    #S(FINITE-MAP-986
+;;       :BST #S(BST-1000
+;;               :LEFT NIL
+;;               :VALUE #S(FINITE-MAP-RECORD-986 :KEY B :VALUE 3)
+;;               :RIGHT NIL))
+
 (defgeneric finite-map-lookup (k fm))
 ;; If finite map FM contains a record with key K, retrieve its associated value.
 ;;
@@ -127,8 +145,8 @@
        (deftype ,value-type () '(or null ,value-element-type))
        (defstruct ,record-struct
  	 (key nil :type ,key-type)
- 	 (value nil :type ,value-element-type))
-
+ 	 (value nil :type ,value-type))
+       
        (defmethod finite-map-bind ((k ,key-element-type)
 				   (v ,value-element-type)
 				   (fm ,struct))
@@ -137,36 +155,20 @@
 	  :bst (bst-insert (,record-constructor :key k :value v)
 			   (slot-value fm 'bst))))
 
+       (defmethod finite-map-unbind ((k ,key-element-type)
+				     (fm ,struct))
+	 "Return finite map copy w/its BST stripped of records w/key K"
+	 (,constructor
+	  :bst (bst-remove (,record-constructor :key k)
+			   (slot-value fm 'bst))))
+
        (defmethod finite-map-lookup ((k ,key-element-type)
 				     (fm ,struct))
 	 "If finite map FM contains record w/key K, retrieve associated value."
-	 (do* ((branch nil)
-	       (next-rec nil (slot-value branch 'value))
-	       (next-key nil (when (not (null next-rec))
-			       (slot-value next-rec 'key)))
-	       (next-key-not-null nil (not (null next-key)))
-	       (cmp-lt nil (when next-key-not-null
-			     (funcall ,test k next-key)))
-	       (cmp-gt nil (when next-key-not-null
-			     (funcall ,test next-key k))))
-	      ((not (or (null next-key) cmp-lt cmp-gt))
-	       (slot-value next-rec 'value))
-	   (if (null branch)
-	       (setf branch (slot-value fm 'bst))
-	       (progn
-		 (when (null next-key)
-		   (error 'finite-map-key-not-found k))
-		 (cond (cmp-lt
-			(let ((next-left (slot-value branch 'left)))
-			  (if (null next-left)
-			      (error 'finite-map-key-not-found)
-			      (setf branch next-left))))
-		       (cmp-gt
-			(let ((next-right (slot-value branch 'right)))
-			  (if (null next-right)
-			      (error 'finite-map-key-not-found)
-			      (setf branch next-right)))))))))
-
+	 (let ((found (bst-member (,record-constructor :key k)
+				  (slot-value fm 'bst))))
+	   (when found (slot-value (slot-value found 'value) 'value))))
+       
        (,constructor
 	:bst (make-bst :element-type ,record-struct
 		       :test #'(lambda (a b) (funcall ,test
