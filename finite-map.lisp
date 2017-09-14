@@ -21,8 +21,7 @@
 ;;;; WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 ;;;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ;;;; OTHER DEALINGS IN THE SOFTWARE.
-(load "bst.lisp")
-
+#-bst (load "bst")
 (defpackage :finite-map
   (:nicknames :fm)
   (:use :common-lisp
@@ -34,8 +33,72 @@
 	   :finite-map-key-not-found))
 (in-package :finite-map)
 
+;;; MAKE-FINITE-MAP template macro:
+;; Create a typed finite map using a custom-typed BST implementation.
+;;
+;;  Keyword parameters:
+;;    KEY-ELEMENT-TYPE: Unquoted type specifier applied to keys
+;;    VALUE-ELEMENT-TYPE: Unquoted type specifier applied to values
+;;    TEST: Function by which to compare record keys
+;;    OVERWRITES: If true, binding an existing key updates its value
+;;
+;;  Returns:
+;;    New instance of a finite map built on a BST, created from templates.
+;;
+;;  Example:
+;;   > (progn
+;;       (defparameter *fm* (make-finite-map
+;;                            :key-element-type symbol
+;;                            :value-element-type integer
+;;                            :test #'(lambda (a b)
+;;                                      (string< (symbol-name a)
+;;                                               (symbol-name b)))))
+;;       *fm*)
+;;   #S(FINITE-MAP-986 :BST #S(BST-1000 :LEFT NIL :VALUE NIL :RIGHT NIL))
+
 (defgeneric finite-map-bind (k v fm))
+;; Nondestructive insert record to the finite map FM binding key K to value V.
+;;
+;;  Parameters:
+;;    K: Key (of type KEY-ELEMENT-TYPE) under which to index the new record.
+;;    V: Value (of type VALUE-ELEMENT-TYPE) to be held in the new record.
+;;    FM: A finite map to which the desired new record will be added.
+;;
+;;  Returns:
+;;    New instance of a finite map containing the desired new record.
+;;
+;;  Example:
+;;    > (setf *fm* (finite-map-bind 'a 1 *fm*))
+;;    #S(FINITE-MAP-986
+;;       :BST #S(BST-1000
+;;               :LEFT NIL
+;;               :VALUE #S(FINITE-MAP-RECORD-986 :KEY A :VALUE 1)
+;;               :RIGHT NIL))
+;;    > (setf *fm* (finite-map-bind 'b 3 *fm*))
+;;    #S(FINITE-MAP-986
+;;       :BST #S(BST-1000
+;;               :LEFT NIL
+;;               :VALUE #S(FINITE-MAP-RECORD-986 :KEY A :VALUE 1)
+;;               :RIGHT #S(BST-1000
+;;                         :LEFT NIL
+;;                         :VALUE #S(FINITE-MAP-RECORD-986 :KEY B :VALUE 3)
+;;                         :RIGHT NIL)))
+
 (defgeneric finite-map-lookup (k fm))
+;; If finite map FM contains a record with key K, retrieve its associated value.
+;;
+;;  Parameters:
+;;    K: Key for which to search records
+;;    FM: Finite map in which the desired record may be found.
+;;
+;;  Returns:
+;;    If a matching-key record is found, return its stored value.
+;;
+;;  Example:
+;;   > (finite-map-lookup 'c *fm*)
+;;   ; Evaluation aborted on #<FINITE-MAP-KEY-NOT-FOUND {100A321503}>.
+;;   > (finite-map-lookup 'b *fm*)
+;;   3
 
 (define-condition finite-map-key-not-found (error) (e))
 
@@ -44,6 +107,7 @@
  			     (value-element-type 't)
  			     (test #'string<)
 			     (overwrites t))
+  "Create a typed finite map using a custom-typed BST implementation"
   (let* ((id (string (gensym "")))
 	 (struct
 	  (intern (concatenate 'string "FINITE-MAP-" id)))
@@ -68,12 +132,14 @@
        (defmethod finite-map-bind ((k ,key-element-type)
 				   (v ,value-element-type)
 				   (fm ,struct))
+	 "Nondestructive insert of a record to finite map FM, binding K->V."
 	 (,constructor
 	  :bst (bst-insert (,record-constructor :key k :value v)
 			   (slot-value fm 'bst))))
 
        (defmethod finite-map-lookup ((k ,key-element-type)
 				     (fm ,struct))
+	 "If finite map FM contains record w/key K, retrieve associated value."
 	 (do* ((branch nil)
 	       (next-rec nil (slot-value branch 'value))
 	       (next-key nil (when (not (null next-rec))
