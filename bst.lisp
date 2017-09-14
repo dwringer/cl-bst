@@ -21,16 +21,22 @@
 ;;;; WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 ;;;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ;;;; OTHER DEALINGS IN THE SOFTWARE.
+#-deftest(load "deftest")
 (defpackage :bst
-  (:use :common-lisp)
+  (:use :common-lisp
+	:deftest)
   (:export :make-bst
 	   :value
 	   :left
 	   :right
+	   :bst-min
+	   :bst-max
 	   :bst-insert
+	   :bst-remove
 	   :bst-member
 	   :bst-empty
-	   :bst-to-list))
+	   :bst-to-list
+	   :make-tests))
 (in-package :bst)
 
 ;;; MAKE-BST template macro:
@@ -51,6 +57,24 @@
 ;;       *t*)
 ;;   #S(BST-1173 :LEFT NIL :VALUE NIL :RIGHT NIL)
 
+(defgeneric bst-min (tr))
+;; Find the minimum (leftmost branch) value in the given bst TR.
+;;
+;;  Parameters:
+;;    TR: The binary search tree from which to produce the minimum element
+;;  
+;;  Returns:
+;;    Minimum value contained in the binary search tree TR.
+
+(defgeneric bst-max (tr))
+;; Find the maximum (rightmost branch) value in the given bst TR.
+;;
+;;  Parameters:
+;;    TR: The binary search tree from which to produce the maximum element
+;;
+;;  Returns:
+;;    Maximum value contained in the binary search tree TR.
+
 (defgeneric bst-insert (x tr))
 ;; Nondestructive insert of value X into binary search tree TR.
 ;;
@@ -69,6 +93,23 @@
 ;;      :LEFT #S(BST-1173 :LEFT NIL :VALUE "hello" :RIGHT NIL)
 ;;      :VALUE "world"
 ;;      :RIGHT NIL)
+
+(defgeneric bst-remove (x tr))
+;;  Return a copy of the bst TR sans elements matching X.
+;;
+;;   Parameters:
+;;     X: Element against which to match candidates for deletion
+;;     TR: Binary search tree from which to remove elements matching X
+;;
+;;   Returns:
+;;     A bst created from nodes of TR with matches of X removed.
+;;
+;;   Example:
+;;    > (bst-remove "world" *t*)
+;;    #S(BST-1173
+;;       :LEFT NIL
+;;       :VALUE "hello"
+;;       :RIGHT NIL)
 
 (defgeneric bst-member (x tr))
 ;; If found, retrieve the subtree of binary search tree TR containing element X.
@@ -134,6 +175,20 @@
 	 (value nil :type ,elem-type)
 	 (right nil :type ,type))
        
+       (defmethod bst-min ((tr ,struct))
+	 "Find the minimum (leftmost branch) value in the given bst TR."
+	 (let ((l (slot-value tr 'left)))
+	   (if (null l)
+	       (slot-value tr 'value)
+	       (bst-min l))))
+
+       (defmethod bst-max ((tr ,struct))
+	 "Find the maximum (rightmost branch) value in the given bst TR."
+	 (let ((r (slot-value tr 'right)))
+	   (if (null r)
+	       (slot-value tr 'value)
+	       (bst-max r))))
+
        (defmethod bst-insert ((x ,element-type) (tr ,struct))
 	 "Nondestructive insert of value X into binary search tree TR."
 	 (with-slots ((l left) (v value) (r right)) tr
@@ -155,6 +210,27 @@
 		 (t (if ,overwrites
 			(,constructor :left l :value x :right r)
 			tr)))))
+
+       (defmethod bst-remove ((x ,element-type) (tr ,struct))
+	 "Return a copy of the bst TR sans elements matching X."
+	 (with-slots ((l left) (v value) (r right)) tr
+	   (cond ((null v) nil)
+		 ((not (or (funcall ,test x v)
+			   (funcall ,test v x)))
+		  (cond ((and (null l) (null r)) nil)
+			((null l) (bst-remove x r))
+			((null r) (bst-remove x l))
+			(t (let* ((nextl (bst-remove x l))
+				  (nextv (bst-min r))
+				  (nextr (bst-remove nextv
+						     (bst-remove x r))))
+			     (,constructor :left nextl
+					   :value nextv
+					   :right nextr)))))
+		 (t (,constructor :left (when (not (null l)) (bst-remove x l))
+				  :value v
+				  :right
+				  (when (not (null r)) (bst-remove x r)))))))
        
        (defmethod bst-member ((x ,element-type) (tr ,struct))
 	 "If found, retrieve the subtree of TR containing element X."
@@ -180,3 +256,73 @@
 			(when (not (null r)) (bst-to-list r)))))
        
        (,constructor))))
+
+
+(defmacro make-tests ()
+  `(deftests
+     (test-inst make-bst () (tr)
+		(assert (not (null tr)))
+		(with-slots ((l left) (v value) (r right)) tr
+		  (assert (null l))
+		  (assert (null v))
+		  (assert (null r))))
+       
+     (test-inst make-bst (:element-type integer) (tr)
+		(assert (not (null tr)))
+		(with-slots ((l left) (v value) (r right)) tr
+		  (assert (null l))
+		  (assert (null v))
+		  (assert (null r)))
+		(setf (slot-value tr 'value) 5)
+		(assert (= (slot-value tr 'value) 5)))
+     
+     (test-inst make-bst (:element-type string :test #'string<) (tr)
+		(assert (not (null tr)))
+		(with-slots ((l left) (v value) (r right)) tr
+		  (assert (null l))
+		  (assert (null v))
+		  (assert (null r)))
+		(setf (slot-value tr 'value) "hello")
+		(assert (string= (slot-value tr 'value) "hello")))
+     
+     (test-pre-method bst-insert (1) (make-bst) orig (result)
+		      (assert (null (slot-value orig 'value)))
+		      (assert (= (slot-value result 'value) 1)))
+     
+     (test-pre-method bst-insert ("test")
+		      (make-bst :element-type string :test #'string<)
+		      orig (result)
+		      (assert (string= (slot-value result 'value) "test"))
+		      (let ((new (bst-insert "hello"
+					     (bst-insert "world" result))))
+			(with-slots ((l left) (v value) (r right)) new
+			  (assert (string= "test" v))
+			  (assert (string= (slot-value l 'value) "hello"))
+			  (assert (string= (slot-value r 'value) "world")))))
+
+     (test-post-method bst-to-list
+		       (let ((bst (make-bst)))
+			 (do ((i 0 (+ i 1)))
+			     ((= i 5) bst)
+			   (setf bst (bst-insert (* (expt -1 i) i) bst))))
+		       ()
+		       orig (result)
+		       (assert (equal '(-3 -1 0 2 4) result)))
+     
+     (test-post-method bst-min
+		       (let ((bst (make-bst)))
+			 (do ((i -5 (+ i 0.5)))
+			     ((= i 5) bst)
+			   (setf bst (bst-insert i bst))))
+		       ()
+		       orig (result)
+		       (assert (= -5 result)))
+     
+     (test-post-method bst-max
+		       (let ((bst (make-bst)))
+			 (do ((i -5 (+ i 0.5)))
+			     ((= i 5) bst)
+			   (setf bst (bst-insert i bst))))
+		       ()
+		       orig (result)
+		       (assert (= 4.5 result)))))

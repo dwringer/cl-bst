@@ -23,6 +23,36 @@ Create a typed binary search tree using a custom template tree type.
   #S(BST-1173 :LEFT NIL :VALUE NIL :RIGHT NIL)
 ```
 
+### bst-min (tr)
+Find the minimum (leftmost branch) value in the given bst TR.
+
+#### Parameters:
+   TR: The binary search tree from which to produce the minimum element
+   
+#### Returns:
+   Minimum value contained in the binary search tree TR
+   
+#### Example:
+```
+  > (bst-min *bst-containing-values-1-through-10*)
+  1
+```
+
+### bst-max (tr)
+Find the maximum (rightmost branch) value in the given bst TR.
+
+#### Parameters:
+   TR: The binary search tree from which to produce the maximum element
+
+#### Returns:
+   Maximum value contained in the binary search tree TR.
+   
+#### Example:
+```
+  > (bst-max *bst-containing-values-1-through-10*)
+  10
+```
+
 ### bst-insert (x tr)
 Nondestructive insert of value X into binary search tree TR.
 
@@ -41,6 +71,25 @@ Nondestructive insert of value X into binary search tree TR.
   #S(BST-1173
      :LEFT #S(BST-1173 :LEFT NIL :VALUE "hello" :RIGHT NIL)
      :VALUE "world"
+     :RIGHT NIL)
+```
+
+### bst-remove (x tr)
+Return a copy of the bst TR sans elements matching X.
+
+#### Parameters:
+   X: Element against which to match candidates for deletion
+   TR: Binary search tree from which to remove elements matching X
+
+#### Returns:
+   A bst created from nodes of TR with matches of X removed.
+
+#### Example:
+```
+  > (bst-remove "world" *t*)
+  #S(BST-1173
+     :LEFT NIL
+     :VALUE "hello"
      :RIGHT NIL)
 ```
 
