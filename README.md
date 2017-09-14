@@ -87,10 +87,7 @@ Return a copy of the bst TR sans elements matching X.
 #### Example:
 ```
   > (bst-remove "world" *t*)
-  #S(BST-1173
-     :LEFT NIL
-     :VALUE "hello"
-     :RIGHT NIL)
+  #S(BST-1173 :LEFT NIL :VALUE "hello" :RIGHT NIL)
 ```
 
 ### bst-member (x tr)
