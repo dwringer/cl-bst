@@ -231,7 +231,7 @@
 
        (test-pre-method finite-map-bind ("hello" "world")
 			(make-finite-map)
-			orig (result)
+			(orig) (result)
 		(assert (not (null orig)))
 		(assert (not (null result)))
 		(let* ((bst (slot-value result 'bst))
@@ -243,7 +243,7 @@
        (test-pre-method finite-map-unbind ("hello")
 			(let ((fm (make-finite-map)))
 			  (finite-map-bind "hello" "world" fm))
-			orig (result)
+			(orig) (result)
 		(assert (not (null orig)))
 		(let ((bst (slot-value result 'bst)))
 		  (bst::assert-null-bst bst))))))

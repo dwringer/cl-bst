@@ -328,13 +328,13 @@
      
        (test-pre-method bst-insert (1)
 			(make-bst)
-			orig (result)
+			(orig) (result)
 	(assert (null (slot-value orig 'value)))
 	(assert (= (slot-value result 'value) 1)))
        
        (test-pre-method bst-insert ("test")
 			(make-bst :element-type string :test #'string<)
-			orig (result)
+			(orig) (result)
 	(assert (string= (slot-value result 'value) "test"))
 	(let ((new (bst-insert "hello"
 			       (bst-insert "world" result))))
@@ -347,17 +347,17 @@
 			 (make-test-reals-bst 0 5
 			  :apply-fn #'(lambda (x) (* (expt -1 x) x)))
 			 ()
-			 orig (result)
+			 (orig) (result)
 	 (assert (equal '(-3 -1 0 2 4) result)))
        
        (test-post-method bst-min
 			 (make-test-reals-bst -5 5 :step 0.5)
 			 ()
-			 orig (result)
+			 (orig) (result)
 	 (assert (= -5 result)))
        
        (test-post-method bst-max
 			 (make-test-reals-bst -5 5 :step 0.5)
 			 ()
-			 orig (result)
+			 (orig) (result)
 	 (assert (= 4.5 result))))))
