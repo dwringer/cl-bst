@@ -25,7 +25,6 @@
 (defpackage :finite-map
   (:nicknames :fm)
   (:use :common-lisp)
-;;	:bst)
   (:export :make-finite-map
 	   :bst
 	   :finite-map-bind
