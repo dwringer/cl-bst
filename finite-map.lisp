@@ -21,10 +21,12 @@
 ;;;; WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 ;;;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ;;;; OTHER DEALINGS IN THE SOFTWARE.
-#-bst (load "bst")
+(when (not (find-package 'bst)) (load "bst"))
+(when (not (find-package 'deftest)) (load "deftest"))
 (defpackage :finite-map
   (:nicknames :fm)
-  (:use :common-lisp)
+  (:use :common-lisp
+	:deftest)
   (:export :make-finite-map
 	   :bst
 	   :finite-map-bind
@@ -214,3 +216,15 @@
 			   :test #'(lambda (a b) (funcall ,test
 						     (slot-value a 'key)
 						     (slot-value b 'key))))))))
+
+(setf (macro-function 'define-fm-prototype) (macro-function 'make-finite-map))
+
+(defmacro make-tests ()
+  `(progn
+     (define-fm-prototype)
+     (deftests
+	 (test-inst make-finite-map ()
+		    (fm)
+	    (assert (not (null fm)))
+	    (let ((bst (slot-value fm 'bst)))
+	      (bst::assert-null-bst bst))))))

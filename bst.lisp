@@ -21,7 +21,7 @@
 ;;;; WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 ;;;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ;;;; OTHER DEALINGS IN THE SOFTWARE.
-#-deftest(load "deftest")
+(when (not (find-package 'deftest)) (load "deftest"))
 (defpackage :bst
   (:use :common-lisp
 	:deftest)
@@ -35,9 +35,7 @@
 	   :bst-remove
 	   :bst-member
 	   :bst-empty
-	   :bst-to-list
-	   :make-tests
-	   :run-tests))
+	   :bst-to-list))
 (in-package :bst)
 
 ;;; MAKE-BST template macro:
