@@ -44,7 +44,6 @@
 
 (defmacro test-pre-method (name args inst inst-as return-values-as &rest body)
   "Call NAME(*ARGS,INST) binding to RETURN-VALUES-AS w/INST-AS then eval body"
-  ;;  `(let ((,inst-as ,inst))
   `(multiple-value-bind ,inst-as ,inst
      (multiple-value-bind ,return-values-as
 	 (eval (concatenate 'list
