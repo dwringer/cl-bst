@@ -28,8 +28,9 @@
   (:export :make-finite-map
 	   :bst
 	   :finite-map-bind
+	   :finite-map-unbind
 	   :finite-map-lookup
-	   :finite-map-key-not-found))
+	   :key-not-found))
 (in-package :finite-map)
 
 ;;; MAKE-FINITE-MAP template macro:
@@ -115,11 +116,11 @@
 ;;
 ;;  Example:
 ;;   > (finite-map-lookup 'c *fm*)
-;;   ; Evaluation aborted on #<FINITE-MAP-KEY-NOT-FOUND {100A321503}>.
+;;   ; Evaluation aborted on #<KEY-NOT-FOUND {100A321503}>.
 ;;   > (finite-map-lookup 'b *fm*)
 ;;   3
 
-(define-condition finite-map-key-not-found (error) (e))
+(define-condition key-not-found (error) (e))
 
 (defvar *next-fm-id* 0)
 (defvar *cached-fm-ids* (make-hash-table :test #'equal))
@@ -204,7 +205,9 @@
 	 "If finite map FM contains record w/key K, retrieve associated value."
 	 (let ((found (bst:bst-member (,record-constructor :key k)
 				      (slot-value fm 'bst))))
-	   (when found (slot-value (slot-value found 'bst::value) 'value))))
+	   (if found
+	       (slot-value (slot-value found 'bst::value) 'value)
+	       (error 'key-not-found k))))
        
        (,constructor
 	:bst (bst:make-bst :element-type ,record-struct
