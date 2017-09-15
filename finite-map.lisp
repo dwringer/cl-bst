@@ -199,16 +199,8 @@
 				     (fm ,struct))
 	 "Return finite map copy w/its BST stripped of records w/key K"
 	 (,constructor
-	  :bst (let ((new-bst (bst:bst-remove (,record-constructor :key k)
-					      (slot-value fm 'bst))))
-		 (if (null new-bst)
-		     nil
-;;		     (bst:make-bst :element-type ,record-struct
-;;				   :test #'(lambda (a b)
-;;					     (funcall ,test
-;;						      (slot-value a 'key)
-;;						      (slot-value b 'key))))
-		     new-bst))))
+	  :bst (bst:bst-remove (,record-constructor :key k)
+			       (slot-value fm 'bst))))
        
        (defmethod finite-map-lookup ((k ,key-element-type)
 				     (fm ,struct))
