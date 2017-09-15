@@ -171,8 +171,8 @@
 (defvar *next-bst-id* 0)
 (defvar *cached-bst-ids* (make-hash-table :test #'equal))
 
-(defun bst-id (element-type test)
-  (let* ((args (list element-type test))
+(defun bst-id (element-type test pkg-name)
+  (let* ((args (list element-type test pkg-name))
 	 (cached-id (gethash args *cached-bst-ids*)))
     (if (null cached-id)
 	(values (let ((id (format nil "~A" *next-bst-id*)))
@@ -185,7 +185,7 @@
 (defmacro make-bst (&key (element-type 'real) (test #'<))
   "Create a typed binary search tree using a custom template tree type."
   (multiple-value-bind (id cached)
-      (bst-id element-type test)
+      (bst-id element-type test (package-name *package*))
     (let ((constructor
 	   (intern (concatenate 'string "MAKE-BST-" id))))
       (if cached
@@ -290,72 +290,76 @@
        
        (,constructor))))
 
+(setf (macro-function 'define-bst-prototype) (macro-function 'make-bst))
+
+(defmacro assert-null-bst (tr)
+  `(progn
+     (assert (not (null ,tr)))
+     (with-slots ((l left) (v value) (r right)) ,tr
+       (assert (null l))
+       (assert (null v))
+       (assert (null r)))))
+
+(defmacro make-test-reals-bst (from to &key (step 1) (apply-fn #'identity))
+  `(do ((bst (make-bst))
+	(i ,from (+ i ,step)))
+       ((= i ,to) bst)
+     (setf bst (bst-insert (funcall ,apply-fn i) bst))))
 
 (defmacro make-tests ()
-  `(deftests
-     (test-inst make-bst () (tr)
-		(assert (not (null tr)))
-		(with-slots ((l left) (v value) (r right)) tr
-		  (assert (null l))
-		  (assert (null v))
-		  (assert (null r))))
+  `(progn
+     (define-bst-prototype)
+     (define-bst-prototype :element-type integer)
+     (define-bst-prototype :element-type string :test #'string<)
+     (deftests
+       (test-inst make-bst ()
+		  (tr)
+	  (assert-null-bst tr))
        
-     (test-inst make-bst (:element-type integer) (tr)
-		(assert (not (null tr)))
-		(with-slots ((l left) (v value) (r right)) tr
-		  (assert (null l))
-		  (assert (null v))
-		  (assert (null r)))
-		(setf (slot-value tr 'value) 5)
-		(assert (= (slot-value tr 'value) 5)))
+       (test-inst make-bst (:element-type integer)
+		  (tr)
+	  (assert-null-bst tr)
+	  (setf (slot-value tr 'value) 5)
+	  (assert (= (slot-value tr 'value) 5)))
      
-     (test-inst make-bst (:element-type string :test #'string<) (tr)
-		(assert (not (null tr)))
-		(with-slots ((l left) (v value) (r right)) tr
-		  (assert (null l))
-		  (assert (null v))
-		  (assert (null r)))
-		(setf (slot-value tr 'value) "hello")
-		(assert (string= (slot-value tr 'value) "hello")))
+       (test-inst make-bst (:element-type string :test #'string<)
+		  (tr)
+	  (assert-null-bst tr)
+	  (setf (slot-value tr 'value) "hello")
+	  (assert (string= (slot-value tr 'value) "hello")))
      
-     (test-pre-method bst-insert (1) (make-bst) orig (result)
-		      (assert (null (slot-value orig 'value)))
-		      (assert (= (slot-value result 'value) 1)))
-     
-     (test-pre-method bst-insert ("test")
-		      (make-bst :element-type string :test #'string<)
-		      orig (result)
-		      (assert (string= (slot-value result 'value) "test"))
-		      (let ((new (bst-insert "hello"
-					     (bst-insert "world" result))))
-			(with-slots ((l left) (v value) (r right)) new
-			  (assert (string= "test" v))
-			  (assert (string= (slot-value l 'value) "hello"))
-			  (assert (string= (slot-value r 'value) "world")))))
-
-     (test-post-method bst-to-list
-		       (let ((bst (make-bst)))
-			 (do ((i 0 (+ i 1)))
-			     ((= i 5) bst)
-			   (setf bst (bst-insert (* (expt -1 i) i) bst))))
-		       ()
-		       orig (result)
-		       (assert (equal '(-3 -1 0 2 4) result)))
-     
-     (test-post-method bst-min
-		       (let ((bst (make-bst)))
-			 (do ((i -5 (+ i 0.5)))
-			     ((= i 5) bst)
-			   (setf bst (bst-insert i bst))))
-		       ()
-		       orig (result)
-		       (assert (= -5 result)))
-     
-     (test-post-method bst-max
-		       (let ((bst (make-bst)))
-			 (do ((i -5 (+ i 0.5)))
-			     ((= i 5) bst)
-			   (setf bst (bst-insert i bst))))
-		       ()
-		       orig (result)
-		       (assert (= 4.5 result)))))
+       (test-pre-method bst-insert (1)
+			(make-bst)
+			orig (result)
+	(assert (null (slot-value orig 'value)))
+	(assert (= (slot-value result 'value) 1)))
+       
+       (test-pre-method bst-insert ("test")
+			(make-bst :element-type string :test #'string<)
+			orig (result)
+	(assert (string= (slot-value result 'value) "test"))
+	(let ((new (bst-insert "hello"
+			       (bst-insert "world" result))))
+	  (with-slots ((l left) (v value) (r right)) new
+	    (assert (string= "test" v))
+	    (assert (string= (slot-value l 'value) "hello"))
+	    (assert (string= (slot-value r 'value) "world")))))
+       
+       (test-post-method bst-to-list
+			 (make-test-reals-bst 0 5
+			  :apply-fn #'(lambda (x) (* (expt -1 x) x)))
+			 ()
+			 orig (result)
+	 (assert (equal '(-3 -1 0 2 4) result)))
+       
+       (test-post-method bst-min
+			 (make-test-reals-bst -5 5 :step 0.5)
+			 ()
+			 orig (result)
+	 (assert (= -5 result)))
+       
+       (test-post-method bst-max
+			 (make-test-reals-bst -5 5 :step 0.5)
+			 ()
+			 orig (result)
+	 (assert (= 4.5 result))))))

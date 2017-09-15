@@ -1,4 +1,4 @@
-;;;; DEFTEST.LISP - Lisp macro-based testing framework (optimized for SBCL)
+;;;; DEFTEST.LISP - Lisp macro-based testing framework
 ;;;; Copyright 2017 Darren W. Ringer <dwringer@gmail.com>
 
 ;;;; Permission is hereby granted, free of charge, to any person
@@ -30,33 +30,24 @@
 	   :run-tests))
 (in-package :deftest)
 
-(defmacro without-style-warnings (&rest body)
-  `(locally
-       (declare #+sbcl(sb-ext:muffle-conditions style-warning))
-     (handler-bind
-	 (#+sbcl(style-warning #'muffle-warning))
-       ,@body)))
-
 (defmacro test-inst (name args return-values-as &rest body)
   `(multiple-value-bind ,return-values-as (eval (cons ',name ',args))
      ,@body))
 
 (defmacro test-post-method (name inst args inst-as return-values-as &rest body)
-  `(without-style-warnings
-       (let ((,inst-as ,inst))
+  `(let ((,inst-as ,inst))
 	 (multiple-value-bind ,return-values-as
-	     (eval (cons ',name (cons ',inst ',args)))
-	   ,@body))))
+	     (eval (cons ',name (cons ,inst-as ',args)))
+	   ,@body)))
      
 (defmacro test-pre-method (name args inst inst-as return-values-as &rest body)
-  `(without-style-warnings
-       (let ((,inst-as ,inst))
+  `(let ((,inst-as ,inst))
 	 (multiple-value-bind ,return-values-as
 	     (eval (concatenate 'list
 				(list ',name)
 				',args
 				(list ,inst-as)))
-	   ,@body))))
+	   ,@body)))
 
 (defparameter *tests* nil)
 
