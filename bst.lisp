@@ -245,10 +245,10 @@
        (defmethod bst-remove ((x ,element-type) (tr ,struct))
 	 "Return a copy of the bst TR sans elements matching X."
 	 (with-slots ((l left) (v value) (r right)) tr
-	   (cond ((null v) nil)
+	   (cond ((null v) (,constructor))
 		 ((not (or (funcall ,test x v)
 			   (funcall ,test v x)))
-		  (cond ((and (null l) (null r)) nil)
+		  (cond ((and (null l) (null r)) (,constructor))
 			((null l) (bst-remove x r))
 			((null r) (bst-remove x l))
 			(t (let* ((nextl (bst-remove x l))

@@ -199,9 +199,17 @@
 				     (fm ,struct))
 	 "Return finite map copy w/its BST stripped of records w/key K"
 	 (,constructor
-	  :bst (bst:bst-remove (,record-constructor :key k)
-			       (slot-value fm 'bst))))
-
+	  :bst (let ((new-bst (bst:bst-remove (,record-constructor :key k)
+					      (slot-value fm 'bst))))
+		 (if (null new-bst)
+		     nil
+;;		     (bst:make-bst :element-type ,record-struct
+;;				   :test #'(lambda (a b)
+;;					     (funcall ,test
+;;						      (slot-value a 'key)
+;;						      (slot-value b 'key))))
+		     new-bst))))
+       
        (defmethod finite-map-lookup ((k ,key-element-type)
 				     (fm ,struct))
 	 "If finite map FM contains record w/key K, retrieve associated value."
@@ -223,8 +231,27 @@
   `(progn
      (define-fm-prototype)
      (deftests
-	 (test-inst make-finite-map ()
-		    (fm)
-	    (assert (not (null fm)))
-	    (let ((bst (slot-value fm 'bst)))
-	      (bst::assert-null-bst bst))))))
+       (test-inst make-finite-map ()
+		  (fm)
+	  (assert (not (null fm)))
+	  (let ((bst (slot-value fm 'bst)))
+	    (bst::assert-null-bst bst)))
+
+       (test-pre-method finite-map-bind ("hello" "world")
+			(make-finite-map)
+			orig (result)
+		(assert (not (null orig)))
+		(assert (not (null result)))
+		(let* ((bst (slot-value result 'bst))
+		       (record (slot-value bst 'bst::value)))
+		  (with-slots ((k key) (v value)) record
+		    (assert (string= k "hello"))
+		    (assert (string= v "world")))))
+       
+       (test-pre-method finite-map-unbind ("hello")
+			(let ((fm (make-finite-map)))
+			  (finite-map-bind "hello" "world" fm))
+			orig (result)
+		(assert (not (null orig)))
+		(let ((bst (slot-value result 'bst)))
+		  (bst::assert-null-bst bst))))))
