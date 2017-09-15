@@ -255,7 +255,7 @@ If finite map FM contains a record with key K, retrieve its associated value.
 ```
 
 ## LICENSE:
-> CL-BST
+> CL-BST &copy;
 > Copyright 2017 Darren W. Ringer <dwringer@gmail.com>
 
 > Permission is hereby granted, free of charge, to any person
