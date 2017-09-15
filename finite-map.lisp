@@ -143,29 +143,35 @@
   "Create a typed finite map using a custom-typed BST implementation"
   (multiple-value-bind (id cached)
       (finite-map-id key-element-type value-element-type test)
-    (let ((constructor (intern (concatenate 'string "MAKE-FINITE-MAP-" id))))
+    (let ((constructor (intern (concatenate 'string "MAKE-FINITE-MAP-" id)))
+	  (record-struct
+	   (intern (concatenate 'string "FINITE-MAP-RECORD-" id))))
       (if cached
-	  `(,constructor)
+	  `(,constructor
+	    :bst (bst:make-bst :element-type ,record-struct
+			       :test #'(lambda (a b) (funcall ,test
+							 (slot-value a 'key)
+							 (slot-value b 'key)))))
 	  `(make-finite-map! :key-element-type ,key-element-type
 			     :value-element-type ,value-element-type
 			     :test ,test
 			     :id ,id
-			     :constructor ,constructor)))))
+			     :constructor ,constructor
+			     :record-struct ,record-struct)))))
 
 (defmacro make-finite-map! (&key
 			      key-element-type
 			      value-element-type
 			      test
 			      id
-			      constructor)
+			      constructor
+			      record-struct)
   (let* ((struct
 	  (intern (concatenate 'string "FINITE-MAP-" id)))
  	 (key-type
 	  (intern (concatenate 'string "FINITE-MAP-KEY-" id)))
  	 (value-type
 	  (intern (concatenate 'string "FINITE-MAP-VALUE-" id)))
- 	 (record-struct
-	  (intern (concatenate 'string "FINITE-MAP-RECORD-" id)))
 	 (record-constructor
 	  (intern (concatenate 'string "MAKE-FINITE-MAP-RECORD-" id))))
     `(progn
@@ -199,7 +205,7 @@
 	 "If finite map FM contains record w/key K, retrieve associated value."
 	 (let ((found (bst:bst-member (,record-constructor :key k)
 				      (slot-value fm 'bst))))
-	   (when found (slot-value (slot-value found 'value) 'value))))
+	   (when found (slot-value (slot-value found 'bst::value) 'value))))
        
        (,constructor
 	:bst (bst:make-bst :element-type ,record-struct
