@@ -36,7 +36,8 @@
 	   :bst-member
 	   :bst-empty
 	   :bst-to-list
-	   :make-tests))
+	   :make-tests
+	   :run-tests))
 (in-package :bst)
 
 ;;; MAKE-BST template macro:
@@ -45,8 +46,6 @@
 ;;  Keyword parameters:
 ;;    ELEMENT-TYPE: Unquoted type specifier (as used in method parameter types)
 ;;    TEST: Function by which to compare values left-to-right when ordering
-;;    UNIQUE-ONLY: If true, disallow multiple nodes with the same value
-;;    OVERWRITES: If true and UNIQUE-ONLY, new insertions overwrite matches
 ;;
 ;;  Returns:
 ;;    New instance of a custom BST type created from the template.
@@ -57,30 +56,16 @@
 ;;       *t*)
 ;;   #S(BST-1173 :LEFT NIL :VALUE NIL :RIGHT NIL)
 
-(defgeneric bst-min (tr))
-;; Find the minimum (leftmost branch) value in the given bst TR.
-;;
-;;  Parameters:
-;;    TR: The binary search tree from which to produce the minimum element
-;;  
-;;  Returns:
-;;    Minimum value contained in the binary search tree TR.
-
-(defgeneric bst-max (tr))
-;; Find the maximum (rightmost branch) value in the given bst TR.
-;;
-;;  Parameters:
-;;    TR: The binary search tree from which to produce the maximum element
-;;
-;;  Returns:
-;;    Maximum value contained in the binary search tree TR.
-
-(defgeneric bst-insert (x tr))
+(defgeneric bst-insert (x tr &key unique-only overwrite))
 ;; Nondestructive insert of value X into binary search tree TR.
 ;;
 ;;  Parameters:
 ;;    X: The element (of type ELEMENT-TYPE) to be inserted to the BST
 ;;    TR: The binary search tree into which X will be inserted
+;;
+;;  Keyword parameters:
+;;    UNIQUE-ONLY: If true, disallow multiple nodes with the same value
+;;    OVERWRITE: If true and UNIQUE-ONLY, new insertions overwrite matches
 ;;
 ;;  Returns:
 ;;    A BST created from TR with a [possibly additional] node representing X.
@@ -93,6 +78,32 @@
 ;;      :LEFT #S(BST-1173 :LEFT NIL :VALUE "hello" :RIGHT NIL)
 ;;      :VALUE "world"
 ;;      :RIGHT NIL)
+
+(defgeneric bst-min (tr))
+;; Find the minimum (leftmost branch) value in the given bst TR.
+;;
+;;  Parameters:
+;;    TR: The binary search tree from which to produce the minimum element
+;;  
+;;  Returns:
+;;    Minimum value contained in the binary search tree TR.
+;;
+;;  Example:
+;;    > (bst-min *t*)
+;;    "hello"
+
+(defgeneric bst-max (tr))
+;; Find the maximum (rightmost branch) value in the given bst TR.
+;;
+;;  Parameters:
+;;    TR: The binary search tree from which to produce the maximum element
+;;
+;;  Returns:
+;;    Maximum value contained in the binary search tree TR.
+;;
+;;  Example:
+;;    > (bst-max *t*)
+;;    "world"
 
 (defgeneric bst-remove (x tr))
 ;;  Return a copy of the bst TR sans elements matching X.
@@ -157,13 +168,37 @@
 ;;   > (bst-to-list *t*)
 ;;   ("hello" "world")
 
-(defmacro make-bst (&key (element-type 'real) (test #'<) unique-only overwrites)
+(defvar *next-bst-id* 0)
+(defvar *cached-bst-ids* (make-hash-table :test #'equal))
+
+(defun bst-id (element-type test)
+  (let* ((args (list element-type test))
+	 (cached-id (gethash args *cached-bst-ids*)))
+    (if (null cached-id)
+	(values (let ((id (format nil "~A" *next-bst-id*)))
+		  (setf (gethash args *cached-bst-ids*) id)
+		  (setf *next-bst-id* (+ *next-bst-id* 1))
+		  id)
+		nil)
+	(values cached-id t))))
+
+(defmacro make-bst (&key (element-type 'real) (test #'<))
   "Create a typed binary search tree using a custom template tree type."
-  (let* ((id (string (gensym "")))
-	 (type (intern (concatenate 'string "BST-NODE-" id)))
+  (multiple-value-bind (id cached)
+      (bst-id element-type test)
+    (let ((constructor
+	   (intern (concatenate 'string "MAKE-BST-" id))))
+      (if cached
+	  `(,constructor)
+	  `(make-bst! :element-type ,element-type
+		      :test ,test
+		      :id ,id
+		      :constructor ,constructor)))))
+
+(defmacro make-bst! (&key (element-type 'real) (test #'<) id constructor)
+  (let* ((type (intern (concatenate 'string "BST-NODE-" id)))
 	 (elem-type (intern (concatenate 'string "BST-ELEM-" id)))
-	 (struct (intern (concatenate 'string "BST-" id)))
-	 (constructor (intern (concatenate 'string "MAKE-BST-" id))))
+	 (struct (intern (concatenate 'string "BST-" id))))
     `(progn
        (deftype ,type () '(or null ,struct))
        (deftype ,elem-type () '(or null ,element-type))
@@ -172,6 +207,29 @@
 	 (value nil :type ,elem-type)
 	 (right nil :type ,type))
        
+       (defmethod bst-insert ((x ,element-type) (tr ,struct)
+			      &key unique-only overwrite)
+	 "Nondestructive insert of value X into binary search tree TR."
+	 (with-slots ((l left) (v value) (r right)) tr
+	   (cond ((null v) (,constructor :value x))
+		 ((funcall ,test v x)
+		  (,constructor :left l
+				:value v
+				:right (if (null r)
+					   (,constructor :value x)
+					   (bst-insert x r))))
+		 ((or (not unique-only)
+		      (funcall ,test x v))
+		  (,constructor :left (if (null l)
+					  (,constructor
+					   :value x)
+					  (bst-insert x l))
+				:value v
+				:right r))
+		 (t (if overwrite
+			(,constructor :left l :value x :right r)
+			tr)))))
+
        (defmethod bst-min ((tr ,struct))
 	 "Find the minimum (leftmost branch) value in the given bst TR."
 	 (let ((l (slot-value tr 'left)))
@@ -185,28 +243,6 @@
 	   (if (null r)
 	       (slot-value tr 'value)
 	       (bst-max r))))
-
-       (defmethod bst-insert ((x ,element-type) (tr ,struct))
-	 "Nondestructive insert of value X into binary search tree TR."
-	 (with-slots ((l left) (v value) (r right)) tr
-	   (cond ((null v) (,constructor :value x))
-		 ((funcall ,test v x)
-		  (,constructor :left l
-				:value v
-				:right (if (null r)
-					   (,constructor :value x)
-					   (bst-insert x r))))
-		 ((or (not ,unique-only)
-		      (funcall ,test x v))
-		  (,constructor :left (if (null l)
-					  (,constructor
-					   :value x)
-					  (bst-insert x l))
-				:value v
-				:right r))
-		 (t (if ,overwrites
-			(,constructor :left l :value x :right r)
-			tr)))))
 
        (defmethod bst-remove ((x ,element-type) (tr ,struct))
 	 "Return a copy of the bst TR sans elements matching X."

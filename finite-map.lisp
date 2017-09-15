@@ -24,8 +24,8 @@
 #-bst (load "bst")
 (defpackage :finite-map
   (:nicknames :fm)
-  (:use :common-lisp
-	:bst)
+  (:use :common-lisp)
+;;	:bst)
   (:export :make-finite-map
 	   :bst
 	   :finite-map-bind
@@ -40,7 +40,6 @@
 ;;    KEY-ELEMENT-TYPE: Unquoted type specifier applied to keys
 ;;    VALUE-ELEMENT-TYPE: Unquoted type specifier applied to values
 ;;    TEST: Function by which to compare record keys
-;;    OVERWRITES: If true, binding an existing key updates its value
 ;;
 ;;  Returns:
 ;;    New instance of a finite map built on a BST, created from templates.
@@ -56,13 +55,16 @@
 ;;       *fm*)
 ;;   #S(FINITE-MAP-986 :BST #S(BST-1000 :LEFT NIL :VALUE NIL :RIGHT NIL))
 
-(defgeneric finite-map-bind (k v fm))
+(defgeneric finite-map-bind (k v fm &key overwrite))
 ;; Nondestructive insert record to the finite map FM binding key K to value V.
 ;;
 ;;  Parameters:
 ;;    K: Key (of type KEY-ELEMENT-TYPE) under which to index the new record.
 ;;    V: Value (of type VALUE-ELEMENT-TYPE) to be held in the new record.
 ;;    FM: A finite map to which the desired new record will be added.
+;;
+;;  Keyword parameters:
+;;    OVERWRITE: If true, binding an existing key updates its value
 ;;
 ;;  Returns:
 ;;    New instance of a finite map containing the desired new record.
@@ -120,14 +122,43 @@
 
 (define-condition finite-map-key-not-found (error) (e))
 
+(defvar *next-fm-id* 0)
+(defvar *cached-fm-ids* (make-hash-table :test #'equal))
+
+(defun finite-map-id (key-element-type value-element-type test)
+  (let* ((args (list key-element-type value-element-type test))
+	 (cached-id (gethash args *cached-fm-ids*)))
+    (if (null cached-id)
+	(values (let ((id (format nil "~A" *next-fm-id*)))
+		  (setf (gethash args *cached-fm-ids*) id)
+		  (setf *next-fm-id* (+ *next-fm-id* 1))
+		  id)
+		nil)
+	(values cached-id t))))
+
 (defmacro make-finite-map (&key
  			     (key-element-type 'string)
  			     (value-element-type 't)
- 			     (test #'string<)
-			     (overwrites t))
+ 			     (test #'string<))
   "Create a typed finite map using a custom-typed BST implementation"
-  (let* ((id (string (gensym "")))
-	 (struct
+  (multiple-value-bind (id cached)
+      (finite-map-id key-element-type value-element-type test)
+    (let ((constructor (intern (concatenate 'string "MAKE-FINITE-MAP-" id))))
+      (if cached
+	  `(,constructor)
+	  `(make-finite-map! :key-element-type ,key-element-type
+			     :value-element-type ,value-element-type
+			     :test ,test
+			     :id ,id
+			     :constructor ,constructor)))))
+
+(defmacro make-finite-map! (&key
+			      key-element-type
+			      value-element-type
+			      test
+			      id
+			      constructor)
+  (let* ((struct
 	  (intern (concatenate 'string "FINITE-MAP-" id)))
  	 (key-type
 	  (intern (concatenate 'string "FINITE-MAP-KEY-" id)))
@@ -135,8 +166,6 @@
 	  (intern (concatenate 'string "FINITE-MAP-VALUE-" id)))
  	 (record-struct
 	  (intern (concatenate 'string "FINITE-MAP-RECORD-" id)))
-	 (constructor
-	  (intern (concatenate 'string "MAKE-FINITE-MAP-" id)))
 	 (record-constructor
 	  (intern (concatenate 'string "MAKE-FINITE-MAP-RECORD-" id))))
     `(progn
@@ -149,30 +178,31 @@
        
        (defmethod finite-map-bind ((k ,key-element-type)
 				   (v ,value-element-type)
-				   (fm ,struct))
+				   (fm ,struct)
+				   &key (overwrite t))
 	 "Nondestructive insert of a record to finite map FM, binding K->V."
 	 (,constructor
-	  :bst (bst-insert (,record-constructor :key k :value v)
-			   (slot-value fm 'bst))))
+	  :bst (bst:bst-insert (,record-constructor :key k :value v)
+			       (slot-value fm 'bst)
+			       :unique-only t
+			       :overwrite overwrite)))
 
        (defmethod finite-map-unbind ((k ,key-element-type)
 				     (fm ,struct))
 	 "Return finite map copy w/its BST stripped of records w/key K"
 	 (,constructor
-	  :bst (bst-remove (,record-constructor :key k)
-			   (slot-value fm 'bst))))
+	  :bst (bst:bst-remove (,record-constructor :key k)
+			       (slot-value fm 'bst))))
 
        (defmethod finite-map-lookup ((k ,key-element-type)
 				     (fm ,struct))
 	 "If finite map FM contains record w/key K, retrieve associated value."
-	 (let ((found (bst-member (,record-constructor :key k)
-				  (slot-value fm 'bst))))
+	 (let ((found (bst:bst-member (,record-constructor :key k)
+				      (slot-value fm 'bst))))
 	   (when found (slot-value (slot-value found 'value) 'value))))
        
        (,constructor
-	:bst (make-bst :element-type ,record-struct
-		       :test #'(lambda (a b) (funcall ,test
-						 (slot-value a 'key)
-						 (slot-value b 'key)))
-		       :unique-only t
-		       :overwrites ,overwrites)))))
+	:bst (bst:make-bst :element-type ,record-struct
+			   :test #'(lambda (a b) (funcall ,test
+						     (slot-value a 'key)
+						     (slot-value b 'key))))))))
