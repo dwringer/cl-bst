@@ -242,40 +242,40 @@
 	   (if (null r)
 	       (slot-value tr 'value)
 	       (bst-max r))))
-
+       
        (defmethod bst-remove ((x ,element-type) (tr ,struct)
 			      &optional (first-only t))
 	 "Return a copy of the bst TR sans elements matching X."
 	 (with-slots ((l left) (v value) (r right)) tr
-	   (cond ((null v) (,constructor))
+	   (cond ((null v) (values (,constructor) t))
 		 ((funcall ,test v x)
-		  (,constructor
-		   :left l
-		   :value v
-		   :right (when r
-			    (let ((nextr (bst-remove x r first-only)))
-			      (when (slot-value nextr 'value) nextr)))))
+		  (let ((nextr (when r
+				 (multiple-value-bind (next empty)
+				     (bst-remove x r first-only)
+				   (when (not empty) next)))))
+		    (values (,constructor :left l :value v :right nextr)
+			    nil)))
 		 ((funcall ,test x v)
-		  (,constructor
-		   :left (when l
-			   (let ((nextl (bst-remove x l first-only)))
-			     (when (slot-value nextl 'value) nextl)))
-		   :value v
-		   :right r))
-		 (t
-		  (cond ((and (null l) (null r)) (,constructor))
-			((null l) (if first-only r (bst-remove x r nil)))
-			((null r) (if first-only l (bst-remove x l nil)))
-			(t
-			 (let* ((nextl (if first-only l (bst-remove x l nil)))
-				(nextv (bst-min r))
-				(nextr (bst-remove nextv r t)))
-			   (,constructor
-			    :left (when (and nextl (slot-value nextl 'value))
-				    nextl)
-			    :value nextv
-			    :right (when (and nextr (slot-value nextr 'value))
-				     nextr)))))))))
+		  (let ((nextl (when l
+				 (multiple-value-bind (next empty)
+				     (bst-remove x l first-only)
+				   (when (not empty) next)))))
+		    (values (,constructor :left nextl :value v :right r) nil)))
+		 ((and (null l) (null r)) (values (,constructor) t))
+		 ((null l) (if first-only r (bst-remove x r nil)))
+		 ((null r) (if first-only l (bst-remove x l nil)))
+		 (t (let* ((nextl (if first-only
+				      l
+				      (multiple-value-bind (next empty)
+					  (bst-remove x l nil)
+					(when (not empty) next))))
+			   (nextv (bst-min r))
+			   (nextr (multiple-value-bind (next empty)
+				      (bst-remove nextv r t)
+				    (when (not empty) next))))
+		      (values
+		       (,constructor :left nextl :value nextv :right nextr)
+		       nil))))))
        
        (defmethod bst-member ((x ,element-type) (tr ,struct))
 	 "If found, retrieve the subtree of TR containing element X."
