@@ -35,7 +35,8 @@
 	   :bst-remove
 	   :bst-member
 	   :bst-empty
-	   :bst-to-list))
+	   :bst-to-list
+	   :define-bst-prototype))
 (in-package :bst)
 
 ;;; MAKE-BST template macro:
@@ -103,7 +104,7 @@
 ;;    > (bst-max *t*)
 ;;    "world"
 
-(defgeneric bst-remove (x tr))
+(defgeneric bst-remove (x tr &optional first-only))
 ;;  Return a copy of the bst TR sans elements matching X.
 ;;
 ;;   Parameters:
@@ -242,26 +243,39 @@
 	       (slot-value tr 'value)
 	       (bst-max r))))
 
-       (defmethod bst-remove ((x ,element-type) (tr ,struct))
+       (defmethod bst-remove ((x ,element-type) (tr ,struct)
+			      &optional (first-only t))
 	 "Return a copy of the bst TR sans elements matching X."
 	 (with-slots ((l left) (v value) (r right)) tr
 	   (cond ((null v) (,constructor))
-		 ((not (or (funcall ,test x v)
-			   (funcall ,test v x)))
+		 ((funcall ,test v x)
+		  (,constructor
+		   :left l
+		   :value v
+		   :right (when r
+			    (let ((nextr (bst-remove x r first-only)))
+			      (when (slot-value nextr 'value) nextr)))))
+		 ((funcall ,test x v)
+		  (,constructor
+		   :left (when l
+			   (let ((nextl (bst-remove x l first-only)))
+			     (when (slot-value nextl 'value) nextl)))
+		   :value v
+		   :right r))
+		 (t
 		  (cond ((and (null l) (null r)) (,constructor))
-			((null l) (bst-remove x r))
-			((null r) (bst-remove x l))
-			(t (let* ((nextl (bst-remove x l))
-				  (nextv (bst-min r))
-				  (nextr (bst-remove nextv
-						     (bst-remove x r))))
-			     (,constructor :left nextl
-					   :value nextv
-					   :right nextr)))))
-		 (t (,constructor :left (when (not (null l)) (bst-remove x l))
-				  :value v
-				  :right
-				  (when (not (null r)) (bst-remove x r)))))))
+			((null l) (if first-only r (bst-remove x r nil)))
+			((null r) (if first-only l (bst-remove x l nil)))
+			(t
+			 (let* ((nextl (if first-only l (bst-remove x l nil)))
+				(nextv (bst-min r))
+				(nextr (bst-remove nextv r t)))
+			   (,constructor
+			    :left (when (and nextl (slot-value nextl 'value))
+				    nextl)
+			    :value nextv
+			    :right (when (and nextr (slot-value nextr 'value))
+				     nextr)))))))))
        
        (defmethod bst-member ((x ,element-type) (tr ,struct))
 	 "If found, retrieve the subtree of TR containing element X."
