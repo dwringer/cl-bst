@@ -32,24 +32,21 @@
 
 (defmacro test-inst (name args return-values-as &rest body)
   "Construct NAME w/ARGS binding to RETURN-VALUES-AS, then eval body forms"
-  `(multiple-value-bind ,return-values-as (eval (cons ',name ',args))
+  `(multiple-value-bind ,return-values-as ,(cons name args)
      ,@body))
 
 (defmacro test-post-method (name inst args inst-as return-values-as &rest body)
   "Call NAME(INST,*ARGS) binding to RETURN-VALUES-AS w/INST-AS then eval body"
   `(multiple-value-bind ,inst-as ,inst
      (multiple-value-bind ,return-values-as
-	 (eval (cons ',name (concatenate 'list ,(cons 'list inst-as) ',args)))
+	 ,(cons name (append inst-as args))
        ,@body)))
 
 (defmacro test-pre-method (name args inst inst-as return-values-as &rest body)
   "Call NAME(*ARGS,INST) binding to RETURN-VALUES-AS w/INST-AS then eval body"
   `(multiple-value-bind ,inst-as ,inst
      (multiple-value-bind ,return-values-as
-	 (eval (concatenate 'list
-			    (list ',name)
-			    ',args
-			    ,(cons 'list inst-as)))
+	 ,(append (list name) args inst-as)
        ,@body)))
 
 (defparameter *tests* nil)
@@ -60,14 +57,18 @@
 	       (push tst *tests*))
        tests))
 
-(defun run-tests ()
+(defmacro run-tests ()
   "Evaluate all forms in *tests* list, resetting list when[/if] complete"
-  (map nil #'(lambda (tst i)
-	       (format t "Running test ~A..." i)
-	       (when (null (eval tst))
-		 (format t "OK~&")))
-       (reverse *tests*)
-       (do* ((i 1 (+ i 1))
-	     (acc (list i) (cons i acc)))
-	    ((> i (length *tests*)) (reverse acc))))
-  (setf *tests* nil))
+  (let ((forms
+	 (mapcar #'(lambda (tst i)
+		     `(progn
+			(format t "Running test ~A..." ,i)
+			(when (null ,tst)
+			  (format t "OK~&"))))
+		 (reverse *tests*)
+		 (do* ((i 1 (+ i 1))
+		       (acc (list i) (cons i acc)))
+		      ((> i (length *tests*)) (reverse acc))))))
+    (cons 'progn
+	  (append forms
+		  (list '(setf deftest::*tests* nil))))))

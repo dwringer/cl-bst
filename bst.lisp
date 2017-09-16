@@ -281,10 +281,10 @@
        (defmethod bst-to-list ((tr ,struct))
 	 "Convert the binary search tree TR into an ordered list."
 	 (with-slots ((l left) (v value) (r right)) tr
-	   (concatenate 'list
-			(when (not (null l)) (bst-to-list l))
-			(list v)
-			(when (not (null r)) (bst-to-list r)))))
+	   (append
+	    (when (not (null l)) (bst-to-list l))
+	    (list v)
+	    (when (not (null r)) (bst-to-list r)))))
        
        (,constructor))))
 
