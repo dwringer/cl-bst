@@ -15,7 +15,55 @@ allow subsequent such instances to be used without any problems.  The
 aliases DEFINE-BST-PROTOTYPE and DEFINE-FM-PROTOTYPE can be used for
 clarity in this purpose.
 
-## MAKE-BST template macro:
+#### bstins (elt tr &key (test #'<))
+Insert element to abstract BST
+
+#### Parameters:
+   ELT: Element (of any type) to insert to bst TR using TEST  
+   TR: Tree (as created with MKBST) into which to insert the value  
+   TEST: Test by which to compare values and insert ELT in order  
+
+#### Returns:
+    A new BST made from elements of TR with ELT inserted
+
+#### bstrem (elt tr &key (all nil) (test #'<))
+Remove matching element[s] from abstract BST
+
+#### Parameters:
+   ELT: Element to be removed from the bst TR (matched by TEST)  
+   TR: Tree (as created with MKBST) from which to remove the match(es)  
+
+#### Keyword parameters:
+   ALL: Remove all matches instead of just the first?  
+   TEST: Test by which the value to be removed will be matched in the tree  
+
+#### Returns:
+   A new BST condensed from elements of TR with ELT(s) removed
+
+#### bstmem (elt tr &key (test #'<))
+Determine membership of element in abstract BST
+
+#### Parameters:
+   ELT: Element to be checked for membership in the bst TR  
+   TR: Tree to be searched for a matching element  
+
+#### Keyword parameters:
+   TEST: Test by which to determine if a value in the tree matches ELT  
+   
+#### Returns:
+   The sub-tree of bst TR with a value matching ELT at its root.
+
+#### mkbst (&optional initial-contents (test #'<))
+Make an asbtract BST, accepting any type but requiring explicit comparators
+
+#### Parameters:
+   INITIAL-CONTENTS: If supplied, fill newly created BST with these values  
+   TEST: Test argument to supply to BSTINS when inserting initial contents  
+
+#### Returns:
+   A new instance of a BST supporting any value type by explicit comparisons.
+
+## MAKE-BST template macro (alias DEFINE-BST-PROTOTYPE):
 Create a typed binary search tree using a custom template tree type.
 
 #### Keyword parameters:
@@ -33,7 +81,22 @@ Create a typed binary search tree using a custom template tree type.
   #S(BST-1173 :LEFT NIL :VALUE NIL :RIGHT NIL)
 ```
 
-### bst-insert (x tr &key unique-only overwrite)
+### bst-test (tr)
+Return the test function used by binary search trees of the same type as TR.
+
+#### Parameters:
+   TR: BST, the type of which to query for the associated test function  
+
+#### Returns:
+   A comparator function implementing the test used by the given BST  
+
+#### Example:
+```
+  > (funcall (bst-test <a BST of A-Z sorted strings>) "world" "hello")
+  "hello"
+```
+
+### bst-insert (x tr &key unique-only overwrite test)
 Nondestructive insert of value X into binary search tree TR.
 
 #### Parameters:
@@ -43,6 +106,7 @@ Nondestructive insert of value X into binary search tree TR.
 #### Keyword parameters:
    UNIQUE-ONLY: If true, disallow multiple nodes with the same value  
    OVERWRITE: If true and UNIQUE-ONLY, new insertions overwrite matches  
+   TEST: If present, overrides the BST's comparison function  
 
 #### Returns:
    A BST created from TR with a [possibly additional] node representing X.
@@ -88,12 +152,16 @@ Find the maximum (rightmost branch) value in the given bst TR.
   "hello"
 ```
 
-### bst-remove (x tr)
+### bst-remove (x tr &key (first-only t) test)
 Return a copy of the bst TR sans elements matching X.
 
 #### Parameters:
-   X: Element against which to match candidates for deletion
-   TR: Binary search tree from which to remove elements matching X
+   X: Element against which to match candidates for deletion  
+   TR: Binary search tree from which to remove elements matching X  
+   
+#### Keyword parameters:
+   FIRST-ONLY: If true, only remove the first matching element  
+   TEST: If present, overrides the BST's comparison function  
 
 #### Returns:
    A bst created from nodes of TR with matches of X removed.
@@ -104,12 +172,13 @@ Return a copy of the bst TR sans elements matching X.
   #S(BST-1173 :LEFT NIL :VALUE "hello" :RIGHT NIL)
 ```
 
-### bst-member (x tr)
+### bst-member (x tr &optional test)
 If found, retrieve the subtree of binary search tree TR containing element X.
 
 #### Parameters:
    X: The element (of type ELEMENT-TYPE) for which to search  
    TR: The binary search tree in which X is to be sought  
+   TEST: If present, overrides the BST's comparison function  
 
 #### Returns:
    BST with the root node containing a match of X, or NIL if not found.
@@ -157,6 +226,27 @@ Convert the binary search tree TR into an ordered list.
 ```
   > (bst-to-list *t*)
   ("hello" "world")
+```
+
+### bst-map (function tr &optional into-bst)
+Apply FUNCTION to every value in the binary search tree TR
+
+#### Parameters:
+   FUNCTION: Function to be applied to each tree value  
+   TR: Binary search tree to have function applied to elements  
+   INTO-BST: If present, use this BST's type to create the result tree  
+
+#### Returns:
+   A new BST (defaults to same type as TR) with FUNCTION applied.  
+
+#### Example:
+```
+  > (define-bst-prototype :element-type integer :test #'<)
+  #S(BST-2 :LEFT NIL :VALUE NIL :RIGHT NIL)
+  > (bst-map #'(lambda (x) (length x)) *t* *)
+  #S(BST-2 :LEFT NIL
+           :VALUE 5
+           :RIGHT #S(BST-2 :LEFT NIL :VALUE 5 :RIGHT NIL))
 ```
 
 ## MAKE-FINITE-MAP template macro:

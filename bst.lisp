@@ -31,13 +31,83 @@
 	   :right
 	   :bst-min
 	   :bst-max
+	   :bst-test
 	   :bst-insert
 	   :bst-remove
 	   :bst-member
 	   :bst-empty
 	   :bst-to-list
-	   :define-bst-prototype))
+	   :bst-map
+	   :define-bst-prototype
+	   :bstins
+	   :bstrem
+	   :bstmem
+	   :mkbst))
 (in-package :bst)
+
+;;; bstins (elt tr &key (test #'<))
+;; Insert element to abstract BST
+;;
+;;  Parameters:
+;;    ELT: Element (of any type) to insert to bst TR using TEST
+;;    TR: Tree (as created with MKBST) into which to insert the value
+;;    TEST: Test by which to compare values and insert ELT in order
+;;
+;;  Returns:
+;;    A new BST made from elements of TR with ELT inserted
+;;
+;;  Example:
+;;    > (bstins 3 (mkbst))
+;;    #S(BST::BST-0 :LEFT NIL :VALUE 3 :RIGHT NIL)
+
+;;; bstrem (elt tr &key (all nil) (test #'<))
+;; Remove matching element[s] from abstract BST
+;;
+;;  Parameters:
+;;    ELT: Element to be removed from the bst TR (matched by TEST)
+;;    TR: Tree (as created with MKBST) from which to remove the match(es)
+;;
+;;  Keyword parameters:
+;;    ALL: Remove all matches instead of just the first?
+;;    TEST: Test by which the value to be removed will be matched in the tree
+;;
+;;  Returns:
+;;    A new BST condensed from elements of TR with ELT(s) removed
+;;
+;;  Example:
+;;    > (bstrem 3 *)
+;;    #S(BST::BST-0 :LEFT NIL :VALUE NIL :RIGHT NIL)
+
+;;; bstmem (elt tr &key (test #'<))
+;; Determine membership of element in abstract BST
+;;
+;;  Parameters:
+;;    ELT: Element to be checked for membership in the bst TR
+;;    TR: Tree to be searched for a matching element
+;;
+;;  Keyword parameters:
+;;    TEST: Test by which to determine if a value in the tree matches ELT
+;;
+;;  Returns:
+;;    The sub-tree of bst TR with a value matching ELT at its root.
+;;
+;;  Example:
+;;    > (bstmem 3 (bstins 3 (mkbst)))
+;;    #S(BST::BST-0 :LEFT NIL :VALUE 3 :RIGHT NIL)
+
+;;; mkbst (&optional initial-contents (test #'<))
+;; Make an asbtract BST, accepting any type but requiring explicit comparators
+;;
+;;  Parameters:
+;;    INITIAL-CONTENTS: If supplied, fill newly created BST with these values
+;;    TEST: Test argument to supply to BSTINS when inserting initial contents
+;;
+;;  Returns:
+;;    A new instance of a BST supporting any value type by explicit comparisons.
+;;
+;;  Example:
+;;    > (mkbst)
+;;    #S(BST::BST-0 :LEFT NIL :VALUE NIL :RIGHT NIL)
 
 ;;; MAKE-BST template macro:
 ;; Create a typed binary search tree using a custom template tree type.
@@ -55,7 +125,20 @@
 ;;       *t*)
 ;;   #S(BST-1173 :LEFT NIL :VALUE NIL :RIGHT NIL)
 
-(defgeneric bst-insert (x tr &key unique-only overwrite))
+(defgeneric bst-test (tr))
+;; Return the test function used by binary search trees of the same type as TR.
+;;
+;;  Parameters:
+;;    TR: BST, the type of which to query for the associated test function
+;;
+;;  Returns:
+;;    A comparator function implementing the test used by the given BST
+;;
+;;  Example:
+;;    > (funcall (bst-test <a BST of A-Z sorted strings>) "world" "hello")
+;;    "hello"
+
+(defgeneric bst-insert (x tr &key unique-only overwrite test))
 ;; Nondestructive insert of value X into binary search tree TR.
 ;;
 ;;  Parameters:
@@ -65,6 +148,7 @@
 ;;  Keyword parameters:
 ;;    UNIQUE-ONLY: If true, disallow multiple nodes with the same value
 ;;    OVERWRITE: If true and UNIQUE-ONLY, new insertions overwrite matches
+;;    TEST: If present, overrides the BST's comparison function
 ;;
 ;;  Returns:
 ;;    A BST created from TR with a [possibly additional] node representing X.
@@ -104,12 +188,16 @@
 ;;    > (bst-max *t*)
 ;;    "world"
 
-(defgeneric bst-remove (x tr &optional first-only))
+(defgeneric bst-remove (x tr &key first-only test))
 ;;  Return a copy of the bst TR sans elements matching X.
 ;;
 ;;   Parameters:
 ;;     X: Element against which to match candidates for deletion
 ;;     TR: Binary search tree from which to remove elements matching X
+;;
+;;   Keyword parameters:
+;;     FIRST-ONLY: If true, only remove the first matching element
+;;     TEST: If present, overrides the BST's comparison function
 ;;
 ;;   Returns:
 ;;     A bst created from nodes of TR with matches of X removed.
@@ -118,12 +206,13 @@
 ;;    > (bst-remove "world" *t*)
 ;;    #S(BST-1173 :LEFT NIL :VALUE "hello" :RIGHT NIL)
 
-(defgeneric bst-member (x tr))
+(defgeneric bst-member (x tr &optional test))
 ;; If found, retrieve the subtree of binary search tree TR containing element X.
 ;;
 ;;  Parameters:
 ;;    X: The element (of type ELEMENT-TYPE) for which to search
 ;;    TR: The binary search tree in which X is to be sought
+;;    TEST: If present, overrides the BST's comparison function
 ;;
 ;;  Returns:
 ;;    BST with the root node containing a match of X, or NIL if not found.
@@ -167,6 +256,25 @@
 ;;   > (bst-to-list *t*)
 ;;   ("hello" "world")
 
+(defgeneric bst-map (function tr &optional into-bst))
+;; Apply FUNCTION to every value in the binary search tree TR
+;;
+;;  Parameters:
+;;    FUNCTION: Function to be applied to each tree value
+;;    TR: Binary search tree to have function applied to elements
+;;    INTO-BST: If present, use this BST's type to create the result tree
+;;
+;;  Returns:
+;;    A new BST (defaults to same type as TR) with FUNCTION applied.
+;;
+;;  Example:
+;;    > (define-bst-prototype :element-type integer :test #'<)
+;;    #S(BST-2 :LEFT NIL :VALUE NIL :RIGHT NIL)
+;;    > (bst-map #'(lambda (x) (length x)) *t* *)
+;;    #S(BST-2 :LEFT NIL
+;;             :VALUE 5
+;;             :RIGHT #S(BST-2 :LEFT NIL :VALUE 5 :RIGHT NIL))
+
 (defvar *next-bst-id* 0)
 (defvar *cached-bst-ids* (make-hash-table :test #'equal))
 
@@ -205,24 +313,38 @@
 	 (left nil :type ,type)
 	 (value nil :type ,elem-type)
 	 (right nil :type ,type))
+
+       (defmethod bst-test ((tr ,struct))
+	 "Return the test function used by the type of binary search tree TR."
+	 #'(lambda (a b) (funcall ,test a b)))
        
        (defmethod bst-insert ((x ,element-type) (tr ,struct)
-			      &key unique-only overwrite)
+			      &key unique-only overwrite test)
 	 "Nondestructive insert of value X into binary search tree TR."
 	 (with-slots ((l left) (v value) (r right)) tr
 	   (cond ((null v) (,constructor :value x))
-		 ((funcall ,test v x)
+		 ((funcall (if test test ,test) v x)
 		  (,constructor :left l
 				:value v
 				:right (if (null r)
 					   (,constructor :value x)
-					   (bst-insert x r))))
+					   (bst-insert x r
+						       :unique-only
+						       unique-only
+						       :overwrite
+						       overwrite
+						       :test test))))
 		 ((or (not unique-only)
-		      (funcall ,test x v))
+		      (funcall (if test test ,test) x v))
 		  (,constructor :left (if (null l)
 					  (,constructor
 					   :value x)
-					  (bst-insert x l))
+					  (bst-insert x l
+						      :unique-only
+						      unique-only
+						      :overwrite
+						      overwrite
+						      :test test))
 				:value v
 				:right r))
 		 (t (if overwrite
@@ -244,45 +366,59 @@
 	       (bst-max r))))
        
        (defmethod bst-remove ((x ,element-type) (tr ,struct)
-			      &optional (first-only t))
+			      &key (first-only t) test)
 	 "Return a copy of the bst TR sans elements matching X."
 	 (with-slots ((l left) (v value) (r right)) tr
 	   (cond ((null v) (values (,constructor) t))
-		 ((funcall ,test v x)
+		 ((funcall (if test test ,test) v x)
 		  (let ((nextr (when r
 				 (multiple-value-bind (next empty)
-				     (bst-remove x r first-only)
+				     (bst-remove x r
+						 :first-only first-only
+						 :test test)
 				   (when (not empty) next)))))
 		    (values (,constructor :left l :value v :right nextr)
 			    nil)))
-		 ((funcall ,test x v)
+		 ((funcall (if test test ,test) x v)
 		  (let ((nextl (when l
 				 (multiple-value-bind (next empty)
-				     (bst-remove x l first-only)
+				     (bst-remove x l
+						 :first-only first-only
+						 :test test)
 				   (when (not empty) next)))))
 		    (values (,constructor :left nextl :value v :right r) nil)))
 		 ((and (null l) (null r)) (values (,constructor) t))
-		 ((null l) (if first-only r (bst-remove x r nil)))
-		 ((null r) (if first-only l (bst-remove x l nil)))
+		 ((null l) (if first-only r (bst-remove x r
+							:first-only nil
+							:test test)))
+		 ((null r) (if first-only l (bst-remove x l
+							:first-only nil
+							:test test)))
 		 (t (let* ((nextl (if first-only
 				      l
 				      (multiple-value-bind (next empty)
-					  (bst-remove x l nil)
+					  (bst-remove x l
+						      :first-only nil
+						      :test test)
 					(when (not empty) next))))
 			   (nextv (bst-min r))
 			   (nextr (multiple-value-bind (next empty)
-				      (bst-remove nextv r t)
+				      (bst-remove nextv r
+						  :first-only t
+						  :test test)
 				    (when (not empty) next))))
 		      (values
 		       (,constructor :left nextl :value nextv :right nextr)
 		       nil))))))
        
-       (defmethod bst-member ((x ,element-type) (tr ,struct))
+       (defmethod bst-member ((x ,element-type) (tr ,struct) &optional test)
 	 "If found, retrieve the subtree of TR containing element X."
 	 (with-slots ((l left) (v value) (r right)) tr
 	   (cond ((null v) nil)
-		 ((funcall ,test x v) (when (not (null l)) (bst-member x l)))
-		 ((funcall ,test v x) (when (not (null r)) (bst-member x r)))
+		 ((funcall (if test test ,test) x v)
+		  (when (not (null l)) (bst-member x l test)))
+		 ((funcall (if test test ,test) v x)
+		  (when (not (null r)) (bst-member x r test)))
 		 (t tr))))
        
        (defmethod bst-empty ((tr ,struct))
@@ -299,10 +435,50 @@
 	    (when (not (null l)) (bst-to-list l))
 	    (list v)
 	    (when (not (null r)) (bst-to-list r)))))
+
+       (defmethod bst-map (function (tr ,struct) &optional into-bst)
+	 "Apply FUNCTION to every value in the binary search tree TR"
+	 (with-slots ((l left) (v value) (r right)) tr
+	   (let ((newl (when l (bst-map function l into-bst)))
+		 (newv (funcall function v))
+		 (newr (when r (bst-map function r into-bst))))
+	     (if into-bst
+		 (funcall (intern (concatenate 'string "MAKE-"
+					       (symbol-name
+						(type-of into-bst))))
+			  :left newl
+			  :value newv
+			  :right newr)
+		 (,constructor :left (when l (bst-map function l))
+			       :value (funcall function v)
+			       :right (when r (bst-map function r)))))))
        
        (,constructor))))
 
 (setf (macro-function 'define-bst-prototype) (macro-function 'make-bst))
+
+(define-bst-prototype :element-type t :test #'(lambda (a b) (declare (ignore a)) b))
+
+(defun bstins (elt tr &key (test #'<))
+  "Insert element to abstract BST"
+  (bst-insert elt tr :test test))
+
+(defun bstrem (elt tr &key (all nil) (test #'<))
+  "Remove matching element[s] from abstract BST"
+  (bst-remove elt tr :first-only (not all) :test test))
+
+(defun bstmem (elt tr &key (test #'<))
+  "Determine membership of element in abstract BST"
+  (bst-member elt tr test))
+
+(defun mkbst (&optional initial-contents (test #'<))
+  "Make an asbtract BST, accepting any type but requiring explicit comparators"
+  (do ((bst
+	(make-bst :element-type t
+		  :test #'(lambda (a b) (declare (ignore a)) b)))
+       (i 0 (+ i 1)))
+      ((= i (length initial-contents)) bst)
+    (setf bst (bstins (elt initial-contents i) bst :test test))))
 
 (defmacro assert-null-bst (tr)
   `(progn
