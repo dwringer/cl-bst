@@ -323,45 +323,37 @@
        (defmethod bst-remove ((x ,element-type) (tr ,struct)
 			      &key (first-only t) test)
 	 "Return a copy of the bst TR sans elements matching X."
-	 (with-slots ((l left) (v value) (r right)) tr
-	   (cond ((null v) (values (,constructor) t))
-		 ((funcall (if test test ,test) v x)
-		  (let ((nextr (when r (multiple-value-bind (next empty)
-					   (bst-remove x r
-					       :first-only first-only
-					       :test test)
-					 (when (not empty) next)))))
-		    (values (,constructor :left l :value v :right nextr) nil)))
-		 ((funcall (if test test ,test) x v)
-		  (let ((nextl (when l (multiple-value-bind (next empty)
-					   (bst-remove x l
-					       :first-only first-only
-					       :test test)
-					 (when (not empty) next)))))
-		    (values (,constructor :left nextl :value v :right r) nil)))
-		 ((and (null l) (null r)) (values (,constructor) t))
-		 ((null l) (if first-only
-			       (values r nil)
-			       (bst-remove x r :first-only nil :test test)))
-		 ((null r) (if first-only
-			       (values l nil)
-			       (bst-remove x l :first-only nil :test test)))
-		 (t (let* ((nextl (if first-only
-				      l
-				      (multiple-value-bind (next empty)
-					  (bst-remove x l
-					      :first-only nil
-					      :test test)
-					(when (not empty) next))))
-			   (nextv (bst-min r))
-			   (nextr (multiple-value-bind (next empty)
-				      (bst-remove nextv r
-					  :first-only t
-					  :test test)
-				    (when (not empty) next))))
-		      (values
-		       (,constructor :left nextl :value nextv :right nextr)
-		       nil))))))
+	 (macrolet ((%bst-remove-x (bst)
+		      `(bst-remove x ,bst :first-only first-only :test test))
+		    (%make-bst (l v r)
+		      `(,',constructor :left ,l :value ,v :right ,r)))
+	   (with-slots ((l left) (v value) (r right)) tr
+	     (cond ((null v) (values (,constructor) t))
+		   ((funcall (if test test ,test) v x)
+		    (let ((nextr (when r (multiple-value-bind (next empty)
+					     (%bst-remove-x r)
+					   (when (not empty) next)))))
+		      (values (%make-bst l v nextr) nil)))
+		   ((funcall (if test test ,test) x v)
+		    (let ((nextl (when l (multiple-value-bind (next empty)
+					     (%bst-remove-x l)
+					   (when (not empty) next)))))
+		      (values (%make-bst nextl v r) nil)))
+		   ((and (null l) (null r)) (values (,constructor) t))
+		   ((null l) (if first-only (values r nil) (%bst-remove-x r)))
+		   ((null r) (if first-only (values l nil) (%bst-remove-x l)))
+		   (t (let* ((nextl (if first-only
+					l
+					(multiple-value-bind (next empty)
+					    (%bst-remove-x l)
+					  (when (not empty) next))))
+			     (nextv (bst-min r))
+			     (nextr (multiple-value-bind (next empty)
+					(bst-remove nextv r
+						    :first-only t
+						    :test test)
+				      (when (not empty) next))))
+			(values (%make-bst nextl nextv nextr) nil)))))))
        
        (defmethod bst-clear ((tr ,struct))
 	 "Return an empty binary search tree of the same type as TR."
