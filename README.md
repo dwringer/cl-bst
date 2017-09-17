@@ -6,14 +6,19 @@ use, just load "bst.lisp" or "finite-map.lisp" (the latter will
 automatically load the former) and use the :bst or :fm/:finite-map
 package(s).
 
-NOTE: Because of the way these data structures use
-custom-instanced types and structs, the compiler may generate
+Because of the way these data structures use macros to create types and structs, the compiler may generate
 style-warnings if MAKE-BST or MAKE-FINITE-MAP are called for the first
 time (for a given set of params) inside some lexical scope.  Creating
 an empty prototype instance of the desired type at the toplevel will
-allow subsequent such instances to be used without any problems.  The
+allow subsequent instances (of that type) to be used without any problems.  The
 aliases DEFINE-BST-PROTOTYPE and DEFINE-FM-PROTOTYPE can be used for
 clarity in this purpose.
+
+Instead of defining typed BST's it is possible to use the abbreviated
+functions MKBST, BSTINS, BSTREM, and BSTMEM, which require the
+specification of a comparator function when called.  It is not
+necessary to use any prototypes or call anything at the toplevel to
+use these functions.
 
 ### bstins (elt tr &key (test #'<))
 Insert element to abstract BST
@@ -146,6 +151,27 @@ Nondestructive insert of value X into binary search tree TR.
      :RIGHT NIL)
 ```
 
+### bst-set-insert (x tr)
+ Nondestructive overwriting set insert of X into bst TR.
+
+### Parameters:
+  X: The element (of type ELEMENT-TYPE) to be inserted to the BST
+  TR: The binary search tree into which X will be inserted
+
+#### Returns:
+  A BST created from TR with a [possibly additional] node representing X.
+  
+#### Example:
+```
+  > (progn (bst-set-insert "hello" *t*) 
+           (bst-set-insert "hello" *t*)
+		   (bst-set-insert "hello" *t*))
+  #S(BST-1173
+     :LEFT #S(BST-1173 :LEFT NIL :VALUE "hello" :RIGHT NIL)
+     :VALUE "world"
+     :RIGHT NIL)
+```
+
 ### bst-min (tr)
 Find the minimum (leftmost branch) value in the given bst TR.
 
@@ -268,7 +294,7 @@ Convert the binary search tree TR into an ordered list.
   ("hello" "world")
 ```
 
-### bst-insert-list (lst tr &key unique-only overwrite test)
+### bst-insert-list (lst tr &key unique-only overwrite test as-set)
 Insert all values from LST into the bst TR.
 
 #### Parameters:
@@ -277,6 +303,7 @@ Insert all values from LST into the bst TR.
 
 #### Keyword parameters:
 >   This function uses the same keyword parameters as BST-INSERT
+   AS-SET: If true, other keywords are ignored and BST-SET-INSERT is used
 
 #### Example:
 ```

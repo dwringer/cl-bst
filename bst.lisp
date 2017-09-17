@@ -33,6 +33,7 @@
 	   :bst-max
 	   :bst-test
 	   :bst-insert
+	   :bst-set-insert
 	   :bst-remove
 	   :bst-clear
 	   :bst-member
@@ -130,6 +131,16 @@
 ;;  Returns:
 ;;    A BST created from TR with a [possibly additional] node representing X.
 
+(defgeneric bst-set-insert (x tr))
+;; Nondestructive overwriting set insert of X into bst TR.
+;;
+;;  Parameters:
+;;    X: The element (of type ELEMENT-TYPE) to be inserted to the BST
+;;    TR: The binary search tree into which X will be inserted
+;;
+;;  Returns:
+;;    A BST created from TR with a [possibly additional] node representing X.
+
 (defgeneric bst-min (tr))
 ;; Find the minimum (leftmost branch) value in the given bst TR.
 ;;
@@ -200,7 +211,7 @@
 ;;  Returns:
 ;;    A list composed of the elements of TR ordered from left-to-right.
 
-(defgeneric bst-insert-list (lst tr &key unique-only overwrite test))
+(defgeneric bst-insert-list (lst tr &key unique-only overwrite test as-set))
 ;; Insert all values from LST into the bst TR.
 ;;
 ;;  Parameters:
@@ -209,6 +220,7 @@
 ;;
 ;;  Keyword parameters:
 ;;    - This function uses the same keyword parameters as BST-INSERT -
+;;    AS-SET: If t, Ignore all other keyword parameters and uses BST-SET-INSERT
 
 (defgeneric bst-constructor (tr))
 ;; Return the function used to construct instances of the type of TR.
@@ -299,6 +311,25 @@
 			       r))
 		   (t (if overwrite (%make-bst l x r) tr))))))
        
+       (defmethod bst-set-insert ((x ,element-type) (tr ,struct))
+	 "Nondestructive overwriting set insert of X into bst TR."
+	 (macrolet ((%bst-insert-x (bst) `(bst-set-insert x ,bst))
+		    (%make-bst (l v r)
+		      `(,',constructor :left ,l :value ,v :right ,r)))
+	   (with-slots ((l left) (v value) (r right)) tr
+	     (cond ((null v) (,constructor :value x))
+		   ((funcall ,test v x)
+		    (%make-bst l v (if (null r)
+				       (,constructor :value x)
+				       (%bst-insert-x r))))
+		   ((funcall ,test x v)
+		    (%make-bst (if (null l)
+				   (,constructor :value x)
+				   (%bst-insert-x l))
+			       v
+			       r))
+		   (t (%make-bst l x r))))))
+       
        (defmethod bst-min ((tr ,struct))
 	 "Find the minimum (leftmost branch) value in the given bst TR."
 	 (let ((l (slot-value tr 'left)))
@@ -335,15 +366,14 @@
 		   ((and (null l) (null r)) (values (,constructor) t))
 		   ((null l) (if first-only (values r nil) (%bst-remove-x r)))
 		   ((null r) (if first-only (values l nil) (%bst-remove-x l)))
-		   (t (let* ((nextv (bst-min r))
-			     (nextr (%when-not-empty (bst-remove nextv r
-								 :first-only t
-								 :test test))))
+		   (t (let* ((nextv (bst-min r)))
 			(values
 			 (%make-bst
 			  (if first-only l (%when-not-empty (%bst-remove-x l)))
 			  nextv
-			  nextr)
+			  (%when-not-empty (bst-remove nextv r
+						       :first-only t
+						       :test test)))
 			 nil)))))))
        
        (defmethod bst-clear ((tr ,struct))
@@ -377,12 +407,15 @@
 	    (when (not (null r)) (bst-to-list r)))))
 
        (defmethod bst-insert-list (lst (tr ,struct)
-				   &key unique-only overwrite test)
+				   &key unique-only overwrite test as-set)
 	 "Insert all values from LST into the bst TR."
-	 (macrolet ((bst-update (bst) `(bst-insert (elt lst i) ,bst
+	 (macrolet ((bst-update (bst)
+		      `(if as-set
+			   (bst-set-insert (elt lst i) ,bst)
+			   (bst-insert (elt lst i) ,bst
 						   :unique-only unique-only
 						   :overwrite overwrite
-						   :test test)))
+						   :test test))))
 	   (do* ((i 0 (+ i 1))
 		 (bst (bst-update tr) (bst-update bst)))
 		((= i (- (length lst) 1)) bst))))
