@@ -271,41 +271,34 @@
 
        (defmethod bst-test ((tr ,struct))
 	 "Return the test function used by the type of binary search tree TR."
-	 #'(lambda (a b) (funcall ,test a b)))
+	 ,test)
        
        (defmethod bst-insert ((x ,element-type) (tr ,struct)
 			      &key unique-only overwrite test)
 	 "Nondestructive insert of value X into binary search tree TR."
-	 (with-slots ((l left) (v value) (r right)) tr
-	   (cond ((null v) (,constructor :value x))
-		 ((funcall (if test test ,test) v x)
-		  (,constructor :left l
-				:value v
-				:right (if (null r)
-					   (,constructor :value x)
-					   (bst-insert x r
-						       :unique-only
-						       unique-only
-						       :overwrite
-						       overwrite
-						       :test test))))
-		 ((or (not unique-only)
-		      (funcall (if test test ,test) x v))
-		  (,constructor :left (if (null l)
-					  (,constructor
-					   :value x)
-					  (bst-insert x l
-						      :unique-only
-						      unique-only
-						      :overwrite
-						      overwrite
-						      :test test))
-				:value v
-				:right r))
-		 (t (if overwrite
-			(,constructor :left l :value x :right r)
-			tr)))))
-
+	 (macrolet ((%bst-insert-x (bst)
+		      `(bst-insert x ,bst
+				   :unique-only unique-only
+				   :overwrite overwrite
+				   :test test))
+		    (%make-bst (l v r)
+		      `(,',constructor :left ,l :value ,v :right ,r)))
+	   (with-slots ((l left) (v value) (r right)) tr
+	     (when (not test) (setf test ,test))
+	     (cond ((null v) (,constructor :value x))
+		   ((funcall test v x)
+		    (%make-bst l v (if (null r)
+				       (,constructor :value x)
+				       (%bst-insert-x r))))
+		   ((or (not unique-only)
+			(funcall test x v))
+		    (%make-bst (if (null l)
+				   (,constructor :value x)
+				   (%bst-insert-x l))
+			       v
+			       r))
+		   (t (if overwrite (%make-bst l x r) tr))))))
+       
        (defmethod bst-min ((tr ,struct))
 	 "Find the minimum (leftmost branch) value in the given bst TR."
 	 (let ((l (slot-value tr 'left)))
@@ -326,34 +319,32 @@
 	 (macrolet ((%bst-remove-x (bst)
 		      `(bst-remove x ,bst :first-only first-only :test test))
 		    (%make-bst (l v r)
-		      `(,',constructor :left ,l :value ,v :right ,r)))
+		      `(,',constructor :left ,l :value ,v :right ,r))
+		    (%when-not-empty (bst-remove-form)
+		      `(multiple-value-bind (next empty) ,bst-remove-form
+			 (when (not empty) next))))
 	   (with-slots ((l left) (v value) (r right)) tr
+	     (when (not test) (setf test ,test))
 	     (cond ((null v) (values (,constructor) t))
-		   ((funcall (if test test ,test) v x)
-		    (let ((nextr (when r (multiple-value-bind (next empty)
-					     (%bst-remove-x r)
-					   (when (not empty) next)))))
-		      (values (%make-bst l v nextr) nil)))
-		   ((funcall (if test test ,test) x v)
-		    (let ((nextl (when l (multiple-value-bind (next empty)
-					     (%bst-remove-x l)
-					   (when (not empty) next)))))
-		      (values (%make-bst nextl v r) nil)))
+		   ((funcall test v x)
+		    (values (%make-bst l v (when r (%when-not-empty
+						    (%bst-remove-x r)))) nil))
+		   ((funcall test x v)
+		    (values (%make-bst (when l (%when-not-empty
+						(%bst-remove-x l))) v r) nil))
 		   ((and (null l) (null r)) (values (,constructor) t))
 		   ((null l) (if first-only (values r nil) (%bst-remove-x r)))
 		   ((null r) (if first-only (values l nil) (%bst-remove-x l)))
-		   (t (let* ((nextl (if first-only
-					l
-					(multiple-value-bind (next empty)
-					    (%bst-remove-x l)
-					  (when (not empty) next))))
-			     (nextv (bst-min r))
-			     (nextr (multiple-value-bind (next empty)
-					(bst-remove nextv r
-						    :first-only t
-						    :test test)
-				      (when (not empty) next))))
-			(values (%make-bst nextl nextv nextr) nil)))))))
+		   (t (let* ((nextv (bst-min r))
+			     (nextr (%when-not-empty (bst-remove nextv r
+								 :first-only t
+								 :test test))))
+			(values
+			 (%make-bst
+			  (if first-only l (%when-not-empty (%bst-remove-x l)))
+			  nextv
+			  nextr)
+			 nil)))))))
        
        (defmethod bst-clear ((tr ,struct))
 	 "Return an empty binary search tree of the same type as TR."
@@ -362,10 +353,11 @@
        (defmethod bst-member ((x ,element-type) (tr ,struct) &optional test)
 	 "If found, retrieve the subtree of TR containing element X."
 	 (with-slots ((l left) (v value) (r right)) tr
+	   (when (not test) (setf test ,test))
 	   (cond ((null v) nil)
-		 ((funcall (if test test ,test) x v)
+		 ((funcall test x v)
 		  (when (not (null l)) (bst-member x l test)))
-		 ((funcall (if test test ,test) v x)
+		 ((funcall test v x)
 		  (when (not (null r)) (bst-member x r test)))
 		 (t tr))))
        
