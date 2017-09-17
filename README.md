@@ -268,6 +268,22 @@ Convert the binary search tree TR into an ordered list.
   ("hello" "world")
 ```
 
+### bst-insert-list (lst tr &key unique-only overwrite test)
+Insert all values from LST into the bst TR.
+
+#### Parameters:
+   LST: List from which values will be inserted to the tree
+   TR: Binary search tree into which values will be inserted
+
+#### Keyword parameters:
+> - This function uses the same keyword parameters as BST-INSERT -
+
+#### Example:
+```
+  > (bst-to-list (bst-insert-list '("aha" "there") *t*))
+  ("aha" "hello" "there" "world")
+```
+
 ### bst-constructor (tr)
 Return the function used to construct instances of the type of TR.
 

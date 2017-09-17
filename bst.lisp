@@ -38,6 +38,7 @@
 	   :bst-member
 	   :bst-empty
 	   :bst-to-list
+	   :bst-insert-list
 	   :bst-constructor
 	   :bst-map
 	   :define-bst-prototype
@@ -198,6 +199,16 @@
 ;;
 ;;  Returns:
 ;;    A list composed of the elements of TR ordered from left-to-right.
+
+(defgeneric bst-insert-list (lst tr &key unique-only overwrite test))
+;; Insert all values from LST into the bst TR.
+;;
+;;  Parameters:
+;;    LST: List from which values will be inserted to the tree
+;;    TR: Binary search tree into which values will be inserted
+;;
+;;  Keyword parameters:
+;;    - This function uses the same keyword parameters as BST-INSERT -
 
 (defgeneric bst-constructor (tr))
 ;; Return the function used to construct instances of the type of TR.
@@ -381,6 +392,17 @@
 	    (list v)
 	    (when (not (null r)) (bst-to-list r)))))
 
+       (defmethod bst-insert-list (lst (tr ,struct)
+				   &key unique-only overwrite test)
+	 "Insert all values from LST into the bst TR."
+	 (macrolet ((bst-update (bst) `(bst-insert (elt lst i) ,bst
+						   :unique-only unique-only
+						   :overwrite overwrite
+						   :test test)))
+	   (do* ((i 0 (+ i 1))
+		 (bst (bst-update tr) (bst-update bst)))
+		((= i (- (length lst) 1)) bst))))
+       
        (defmethod bst-constructor ((tr ,struct))
 	 "Return the function used to construct instances of the type of TR."
 	 (function ,constructor))
