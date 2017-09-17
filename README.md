@@ -24,7 +24,7 @@ Insert element to abstract BST
    TEST: Test by which to compare values and insert ELT in order  
 
 #### Returns:
-    A new BST made from elements of TR with ELT inserted
+  A new BST made from elements of TR with ELT inserted
 	
 #### Example:
 ```
@@ -45,7 +45,7 @@ Remove matching element[s] from abstract BST
    TEST: Test by which the value to be removed will be matched in the tree  
 
 #### Returns:
-A new BST condensed from elements of TR with ELT(s) removed
+  A new BST condensed from elements of TR with ELT(s) removed
 
 #### Example:
 ```
@@ -64,7 +64,7 @@ Determine membership of element in abstract BST
    TEST: Test by which to determine if a value in the tree matches ELT  
    
 #### Returns:
-   The sub-tree of bst TR with a value matching ELT at its root.
+  The sub-tree of bst TR with a value matching ELT at its root.
    
 #### Example:
 ```
@@ -80,7 +80,7 @@ Make an asbtract BST, accepting any type but requiring explicit comparators
    TEST: Test argument to supply to BSTINS when inserting initial contents  
 
 #### Returns:
-   A new instance of a BST supporting any value type by explicit comparisons.
+  A new instance of a BST supporting any value type by explicit comparisons.
    
 #### Example:
 ```
