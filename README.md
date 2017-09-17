@@ -25,6 +25,13 @@ Insert element to abstract BST
 
 #### Returns:
     A new BST made from elements of TR with ELT inserted
+	
+#### Example:
+```
+  > (bstins 3 (mkbst))
+  #S(BST::BST-0 :LEFT NIL :VALUE 3 :RIGHT NIL)
+
+```
 
 ### bstrem (elt tr &key (all nil) (test #'<))
 Remove matching element[s] from abstract BST
@@ -38,7 +45,13 @@ Remove matching element[s] from abstract BST
    TEST: Test by which the value to be removed will be matched in the tree  
 
 #### Returns:
-   A new BST condensed from elements of TR with ELT(s) removed
+A new BST condensed from elements of TR with ELT(s) removed
+
+#### Example:
+```
+  > (bstrem 3 *)
+  #S(BST::BST-0 :LEFT NIL :VALUE NIL :RIGHT NIL)
+```
 
 ### bstmem (elt tr &key (test #'<))
 Determine membership of element in abstract BST
@@ -52,6 +65,12 @@ Determine membership of element in abstract BST
    
 #### Returns:
    The sub-tree of bst TR with a value matching ELT at its root.
+   
+#### Example:
+```
+  > (bstmem 3 (bstins 3 (mkbst)))
+  #S(BST::BST-0 :LEFT NIL :VALUE 3 :RIGHT NIL)
+```
 
 ### mkbst (&optional initial-contents (test #'<))
 Make an asbtract BST, accepting any type but requiring explicit comparators
@@ -62,6 +81,12 @@ Make an asbtract BST, accepting any type but requiring explicit comparators
 
 #### Returns:
    A new instance of a BST supporting any value type by explicit comparisons.
+   
+#### Example:
+```
+  > (mkbst)
+  #S(BST::BST-0 :LEFT NIL :VALUE NIL :RIGHT NIL)
+```
 
 ## MAKE-BST template macro (alias DEFINE-BST-PROTOTYPE):
 Create a typed binary search tree using a custom template tree type.
