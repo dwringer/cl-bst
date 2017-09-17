@@ -57,16 +57,13 @@
 ;;       *fm*)
 ;;   #S(FINITE-MAP-986 :BST #S(BST-1000 :LEFT NIL :VALUE NIL :RIGHT NIL))
 
-(defgeneric finite-map-bind (k v fm &key overwrite))
+(defgeneric finite-map-bind (k v fm))
 ;; Nondestructive insert record to the finite map FM binding key K to value V.
 ;;
 ;;  Parameters:
 ;;    K: Key (of type KEY-ELEMENT-TYPE) under which to index the new record.
 ;;    V: Value (of type VALUE-ELEMENT-TYPE) to be held in the new record.
 ;;    FM: A finite map to which the desired new record will be added.
-;;
-;;  Keyword parameters:
-;;    OVERWRITE: If true, binding an existing key updates its value
 ;;
 ;;  Returns:
 ;;    New instance of a finite map containing the desired new record.
@@ -186,14 +183,11 @@
        
        (defmethod finite-map-bind ((k ,key-element-type)
 				   (v ,value-element-type)
-				   (fm ,struct)
-				   &key (overwrite t))
+				   (fm ,struct))
 	 "Nondestructive insert of a record to finite map FM, binding K->V."
 	 (,constructor
-	  :bst (bst:bst-insert (,record-constructor :key k :value v)
-			       (slot-value fm 'bst)
-			       :unique-only t
-			       :overwrite overwrite)))
+	  :bst (bst:bst-set-insert (,record-constructor :key k :value v)
+				   (slot-value fm 'bst))))
 
        (defmethod finite-map-unbind ((k ,key-element-type)
 				     (fm ,struct))

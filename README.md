@@ -379,9 +379,6 @@ Nondestructive insert record to the finite map FM binding key K to value V.
    V: Value (of type VALUE-ELEMENT-TYPE) to be held in the new record.  
    FM: A finite map to which the desired new record will be added.  
 
-#### Keyword parameters:
-   OVERWRITE: If true, binding an existing key updates its value  
-
 #### Returns:
    New instance of a finite map containing the desired new record.
 
