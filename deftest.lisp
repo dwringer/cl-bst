@@ -43,11 +43,18 @@
        ,@body)))
 
 (defmacro test-pre-method (name args inst inst-as return-values-as &rest body)
-  "Call NAME(*ARGS,INST) binding to RETURN-VALUES-AS w/INST-AS then eval body"
-  `(multiple-value-bind ,inst-as ,inst
-     (multiple-value-bind ,return-values-as
-	 ,(append (list name) args inst-as)
-       ,@body)))
+  "Call NAME(*args,INST,**kws), bind to RETURN-VALUES-AS w/INST-AS, eval body"
+  (let* (preargs
+	 (kwargs (do* ((remain args (cdr remain))
+		       (next (car remain) (car remain)))
+		      ((or (typep next 'keyword) (null remain))
+		       (progn (setf preargs (reverse preargs))
+			      remain))
+		   (push next preargs))))
+    `(multiple-value-bind ,inst-as ,inst
+       (multiple-value-bind ,return-values-as
+	   ,(append (list name) preargs inst-as kwargs)
+	 ,@body))))
 
 (defparameter *tests* nil)
 

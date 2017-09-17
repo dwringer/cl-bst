@@ -339,7 +339,7 @@
 		   (t (if overwrite (%make-bst l x r) tr))))))
 
        ;; (defmethod bst-fast-insert ((x ,element-type) (tr ,struct))
-       ;; 	 "Noncustomized bst-insert but faster, with only implicit comparisons"
+       ;;  "Noncustomized bst-insert but faster, with only implicit comparisons"
        ;; 	 (macrolet ((%bst-insert-x (bst)
        ;; 		      `(bst-fast-insert x ,bst))
        ;; 		    (%make-bst (l v r)
@@ -581,4 +581,24 @@
 			 (make-test-reals-bst -5 5 :step 0.5)
 			 ()
 			 (orig) (result)
-	 (assert (= 4.5 result))))))
+	 (assert (= 4.5 result)))
+
+       (test-pre-method bst-insert-list ((list 5 3 8 2 9 7 1 4 6))
+			(make-bst :element-type integer)
+			(orig) (result)
+	(assert (equal (bst-to-list result)
+		       '(1 2 3 4 5 6 7 8 9))))
+
+       (test-pre-method bst-remove (7 :first-only nil
+				      :test #'<)
+			(mkbst '(3 7 6 9 5 6 3 7 45 9 7))
+			(orig) (result)
+        (assert (equal '(3 3 5 6 6 9 9 45)
+		       (bst-to-list result))))
+
+       (test-pre-method bst-remove (7)
+			(bst-insert-list '(3 7 6 9 5 6 3 7 45 9 7)
+					 (make-bst :element-type integer))
+			(orig) (result)
+	(assert (equal '(3 3 5 6 6 7 7 9 9 45)
+		       (bst-to-list result)))))))
