@@ -281,8 +281,13 @@
     ;; 		      (setf params (append params
     ;; 					   (list (if ,default
     ;; 						     (list ',name ,default)
-    ;; 						     ',name)))))))
-    ;; 	(let ((params `((x ,element-type) (tr ,struct))))
+    ;; 						     ',name))))
+    ;; 		      (setf insert-args (append insert-args
+    ;; 						(list '',(intern (symbol-name name)
+    ;; 							       "KEYWORD")
+    ;; 						      '',name))))))
+    ;; 	(let ((insert-args nil)
+    ;; 	      (params `((x ,element-type) (tr ,struct))))
     ;; 	  (when (or uniques-key? overwrite-key? test-key?)
     ;; 	    (setf params (append params (list '&key))))
     ;; 	  (create-keyword-param unique-only uniques-key? uniques-val)
@@ -290,14 +295,12 @@
     ;; 	  (create-keyword-param test test-key? test-val)
     ;; 	  `(defmethod ,name ,params
     ;; 	     (macrolet ((%bst-insert-x (bst)
-    ;; 			  ,(append `(bst-insert x ','bst)
-    ;; 				   (when uniques-key?
-    ;; 				     (list :unique-only 'unique-only))
-    ;; 				   (when overwrite-key?
-    ;; 				     (list :overwrite 'overwrite))
-    ;; 				   (when test-key?
-    ;; 				     (list :test 'test)))))
-    ;; 	       ;; ...
+    ;; 			  `(bst-insert x ,bst ,,@insert-args))
+    ;; 			(%make-bst (l v r)
+    ;; 			  `(,',constructor :left ,l :value ,v :right ,r)))
+
+    ;; 	       t
+	       
     ;; 	     )))))
     
     `(progn
@@ -307,6 +310,8 @@
 	 (left nil :type ,type)
 	 (value nil :type ,elem-type)
 	 (right nil :type ,type))
+
+;;       ,(make-insert-method 'testing t t t :test-val #'<)
 
        (defmethod bst-test ((tr ,struct))
 	 "Return the test function used by the type of binary search tree TR."
