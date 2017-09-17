@@ -274,34 +274,55 @@
 	 (elem-type (intern (concatenate 'string "BST-ELEM-" id)))
 	 (struct (intern (concatenate 'string "BST-" id))))
 
-    ;; (defun make-insert-method (name uniques-key? overwrite-key? test-key?
-    ;; 			       &key uniques-val overwrite-val test-val)
-    ;;   (macrolet ((create-keyword-param (name include? default)
-    ;; 		   `(when ,include?
-    ;; 		      (setf params (append params
-    ;; 					   (list (if ,default
-    ;; 						     (list ',name ,default)
-    ;; 						     ',name))))
-    ;; 		      (setf insert-args (append insert-args
-    ;; 						(list '',(intern (symbol-name name)
-    ;; 							       "KEYWORD")
-    ;; 						      '',name))))))
-    ;; 	(let ((insert-args nil)
-    ;; 	      (params `((x ,element-type) (tr ,struct))))
-    ;; 	  (when (or uniques-key? overwrite-key? test-key?)
-    ;; 	    (setf params (append params (list '&key))))
-    ;; 	  (create-keyword-param unique-only uniques-key? uniques-val)
-    ;; 	  (create-keyword-param overwrite overwrite-key? overwrite-val)
-    ;; 	  (create-keyword-param test test-key? test-val)
-    ;; 	  `(defmethod ,name ,params
-    ;; 	     (macrolet ((%bst-insert-x (bst)
-    ;; 			  `(bst-insert x ,bst ,,@insert-args))
-    ;; 			(%make-bst (l v r)
-    ;; 			  `(,',constructor :left ,l :value ,v :right ,r)))
+    (defun make-insert-method (name uniques-key? overwrite-key? test-key?
+    			       &key uniques-val (overwrite-val t) test-val)
+      (macrolet ((create-keyword-param (name include? default)
+    		   `(when ,include?
+    		      (setf params (append params
+    					   (list (if ,default
+    						     (list ',name ,default)
+    						     ',name))))
+    		      (setf insert-args (append insert-args
+    						(list '',(intern (symbol-name name)
+    							       "KEYWORD")
+    						      '',name))))))
+    	(let ((insert-args nil)
+    	      (params `((x ,element-type) (tr ,struct))))
+    	  (when (or uniques-key? overwrite-key? test-key?)
+    	    (setf params (append params (list '&key))))
+    	  (create-keyword-param unique-only uniques-key? uniques-val)
+    	  (create-keyword-param overwrite overwrite-key? overwrite-val)
+    	  (create-keyword-param test test-key? test-val)
+    	  `(defmethod ,name ,params
+    	     (macrolet ((%bst-insert-x (bst)
+    			  `(bst-insert x ,bst ,,@insert-args))
+    			(%make-bst (l v r)
+    			  `(,',constructor :left ,l :value ,v :right ,r)))
 
-    ;; 	       t
-	       
-    ;; 	     )))))
+    	       (with-slots ((l left) (v value) (r right)) tr
+		 ,(when test-key? `(when (not test) (setf test ,test-val)))
+		 (cond ((null v) (,constructor :value x))
+		       ((funcall test v x)
+			(%make-bst l v (if (null r)
+					   (,constructor :value x)
+					   (%bst-insert-x r))))
+		       (,(if (not uniques-key?)
+			     '(funcall test x v)
+			     '(or (not unique-only)
+			       (funcall test x v)))
+			(%make-bst (if (null l)
+				       (,constructor :value x)
+				       (%bst-insert-x l))
+				   v
+				   r))
+		       ,(when uniques-key?
+			      (cond (overwrite-key?
+				     '(t (if overwrite
+					     (%make-bst l x r)
+					     tr)))
+				    (overwrite-val
+				     '(t (%make-bst l x r)))
+				    (t '(t tr)))))))))))
     
     `(progn
        (deftype ,type () '(or null ,struct))
@@ -311,7 +332,7 @@
 	 (value nil :type ,elem-type)
 	 (right nil :type ,type))
 
-;;       ,(make-insert-method 'testing t t t :test-val #'<)
+       ,(make-insert-method 'testing t t t :test-val #'string>)
 
        (defmethod bst-test ((tr ,struct))
 	 "Return the test function used by the type of binary search tree TR."
