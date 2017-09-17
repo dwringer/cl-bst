@@ -57,10 +57,6 @@
 ;;
 ;;  Returns:
 ;;    A new BST made from elements of TR with ELT inserted
-;;
-;;  Example:
-;;    > (bstins 3 (mkbst))
-;;    #S(BST::BST-0 :LEFT NIL :VALUE 3 :RIGHT NIL)
 
 ;;; bstrem (elt tr &key (all nil) (test #'<))
 ;; Remove matching element[s] from abstract BST
@@ -75,10 +71,6 @@
 ;;
 ;;  Returns:
 ;;    A new BST condensed from elements of TR with ELT(s) removed
-;;
-;;  Example:
-;;    > (bstrem 3 *)
-;;    #S(BST::BST-0 :LEFT NIL :VALUE NIL :RIGHT NIL)
 
 ;;; bstmem (elt tr &key (test #'<))
 ;; Determine membership of element in abstract BST
@@ -92,10 +84,6 @@
 ;;
 ;;  Returns:
 ;;    The sub-tree of bst TR with a value matching ELT at its root.
-;;
-;;  Example:
-;;    > (bstmem 3 (bstins 3 (mkbst)))
-;;    #S(BST::BST-0 :LEFT NIL :VALUE 3 :RIGHT NIL)
 
 ;;; mkbst (&optional initial-contents (test #'<))
 ;; Make an asbtract BST, accepting any type but requiring explicit comparators
@@ -106,10 +94,6 @@
 ;;
 ;;  Returns:
 ;;    A new instance of a BST supporting any value type by explicit comparisons.
-;;
-;;  Example:
-;;    > (mkbst)
-;;    #S(BST::BST-0 :LEFT NIL :VALUE NIL :RIGHT NIL)
 
 ;;; MAKE-BST template macro:
 ;; Create a typed binary search tree using a custom template tree type.
@@ -120,12 +104,6 @@
 ;;
 ;;  Returns:
 ;;    New instance of a custom BST type created from the template.
-;;
-;;  Example:
-;;   > (progn 
-;;       (defparameter *t* (make-bst :element-type string :test #'string<)) 
-;;       *t*)
-;;   #S(BST-1173 :LEFT NIL :VALUE NIL :RIGHT NIL)
 
 (defgeneric bst-test (tr))
 ;; Return the test function used by binary search trees of the same type as TR.
@@ -135,10 +113,6 @@
 ;;
 ;;  Returns:
 ;;    A comparator function implementing the test used by the given BST
-;;
-;;  Example:
-;;    > (funcall (bst-test <a BST of A-Z sorted strings>) "world" "hello")
-;;    "hello"
 
 (defgeneric bst-insert (x tr &key unique-only overwrite test))
 ;; Nondestructive insert of value X into binary search tree TR.
@@ -154,15 +128,6 @@
 ;;
 ;;  Returns:
 ;;    A BST created from TR with a [possibly additional] node representing X.
-;;
-;;  Example:
-;;   > (setf *t* (bst-insert "world" *t*))
-;;   #S(BST-1173 :LEFT NIL :VALUE "world" :RIGHT NIL)
-;;   > (setf *t* (bst-insert "hello" *t*))
-;;   #S(BST-1173
-;;      :LEFT #S(BST-1173 :LEFT NIL :VALUE "hello" :RIGHT NIL)
-;;      :VALUE "world"
-;;      :RIGHT NIL)
 
 (defgeneric bst-min (tr))
 ;; Find the minimum (leftmost branch) value in the given bst TR.
@@ -172,10 +137,6 @@
 ;;  
 ;;  Returns:
 ;;    Minimum value contained in the binary search tree TR.
-;;
-;;  Example:
-;;    > (bst-min *t*)
-;;    "hello"
 
 (defgeneric bst-max (tr))
 ;; Find the maximum (rightmost branch) value in the given bst TR.
@@ -185,10 +146,6 @@
 ;;
 ;;  Returns:
 ;;    Maximum value contained in the binary search tree TR.
-;;
-;;  Example:
-;;    > (bst-max *t*)
-;;    "world"
 
 (defgeneric bst-remove (x tr &key first-only test))
 ;;  Return a copy of the bst TR sans elements matching X.
@@ -203,10 +160,6 @@
 ;;
 ;;   Returns:
 ;;     A bst created from nodes of TR with matches of X removed.
-;;
-;;   Example:
-;;    > (bst-remove "world" *t*)
-;;    #S(BST-1173 :LEFT NIL :VALUE "hello" :RIGHT NIL)
 
 (defgeneric bst-clear (tr))
 ;;  Return an empty binary search tree of the same type as TR.
@@ -216,10 +169,6 @@
 ;;
 ;;   Return:
 ;;     An empty [new] binary search tree, of the same type as TR.
-;;
-;;   Example:
-;;     > (bst-clear *t*)
-;;     #S(BST-1173 :LEFT NIL :VALUE NIL :RIGHT NIL)
 
 (defgeneric bst-member (x tr &optional test))
 ;; If found, retrieve subtree of binary search tree TR containing element X.
@@ -231,17 +180,6 @@
 ;;
 ;;  Returns:
 ;;    BST with the root node containing a match of X, or NIL if not found.
-;;
-;;  Example:
-;;   > (bst-member "foo" *t*)
-;;   NIL
-;;   > (bst-member "hello" *t*)
-;;   #S(BST-1173 :LEFT NIL :VALUE "hello" :RIGHT NIL)
-;;   > (bst-member "world" *t*)
-;;   #S(BST-1173
-;;      :LEFT #S(BST-1173 :LEFT NIL :VALUE "hello" :RIGHT NIL)
-;;      :VALUE "world"
-;;      :RIGHT NIL)
 
 (defgeneric bst-empty (tr))
 ;; Return whether the given binary search tree TR is empty.
@@ -251,12 +189,6 @@
 ;;
 ;;  Returns:
 ;;    T if TR is empty [any/all nodes contain NIL], otherwise NIL.
-;;
-;;  Example:
-;;   > (bst-empty *t*)
-;;   NIL
-;;   > (bst-empty (make-bst))
-;;   T
 
 (defgeneric bst-to-list (tr))
 ;; Convert the binary search tree TR into an ordered list.
@@ -266,10 +198,6 @@
 ;;
 ;;  Returns:
 ;;    A list composed of the elements of TR ordered from left-to-right.
-;;
-;;  Example:
-;;   > (bst-to-list *t*)
-;;   ("hello" "world")
 
 (defgeneric bst-constructor (tr))
 ;; Return the function used to construct instances of the type of TR.
@@ -279,10 +207,6 @@
 ;;
 ;;  Returns:
 ;;    A function to construct instances of the inferred type
-;;
-;;  Example:
-;;   > (bst-constructor *t*)
-;;   #<FUNCTION MAKE-BST-1173>
 
 (defgeneric bst-map (function tr &optional into-bst))
 ;; Apply FUNCTION to every value in the binary search tree TR
@@ -294,14 +218,6 @@
 ;;
 ;;  Returns:
 ;;    A new BST (defaults to same type as TR) with FUNCTION applied.
-;;
-;;  Example:
-;;    > (define-bst-prototype :element-type integer :test #'<)
-;;    #S(BST-2 :LEFT NIL :VALUE NIL :RIGHT NIL)
-;;    > (bst-map #'(lambda (x) (length x)) *t* *)
-;;    #S(BST-2 :LEFT NIL
-;;             :VALUE 5
-;;             :RIGHT #S(BST-2 :LEFT NIL :VALUE 5 :RIGHT NIL))
 
 (defvar *next-bst-id* 0)
 (defvar *cached-bst-ids* (make-hash-table :test #'equal))
