@@ -301,7 +301,6 @@
     			  `(,',name x ,bst ,,@insert-args))
     			(%make-bst (l v r)
     			  `(,',constructor :left ,l :value ,v :right ,r)))
-
     	       (with-slots ((l left) (v value) (r right)) tr
 		 ,@(when test-key? `((when (not test) (setf test ,test))))
 		 (cond ((null v) (,constructor :value x))
