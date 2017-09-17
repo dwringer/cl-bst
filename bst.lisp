@@ -34,9 +34,11 @@
 	   :bst-test
 	   :bst-insert
 	   :bst-remove
+	   :bst-clear
 	   :bst-member
 	   :bst-empty
 	   :bst-to-list
+	   :bst-constructor
 	   :bst-map
 	   :define-bst-prototype
 	   :bstins
@@ -206,8 +208,21 @@
 ;;    > (bst-remove "world" *t*)
 ;;    #S(BST-1173 :LEFT NIL :VALUE "hello" :RIGHT NIL)
 
+(defgeneric bst-clear (tr))
+;;  Return an empty binary search tree of the same type as TR.
+;;
+;;   Parameters:
+;;     TR: Tree from which to infer type to create a new tree
+;;
+;;   Return:
+;;     An empty [new] binary search tree, of the same type as TR.
+;;
+;;   Example:
+;;     > (bst-clear *t*)
+;;     #S(BST-1173 :LEFT NIL :VALUE NIL :RIGHT NIL)
+
 (defgeneric bst-member (x tr &optional test))
-;; If found, retrieve the subtree of binary search tree TR containing element X.
+;; If found, retrieve subtree of binary search tree TR containing element X.
 ;;
 ;;  Parameters:
 ;;    X: The element (of type ELEMENT-TYPE) for which to search
@@ -255,6 +270,19 @@
 ;;  Example:
 ;;   > (bst-to-list *t*)
 ;;   ("hello" "world")
+
+(defgeneric bst-constructor (tr))
+;; Return the function used to construct instances of the type of TR.
+;;
+;;  Parameters:
+;;    TR: Binary search tree from which type will be inferred
+;;
+;;  Returns:
+;;    A function to construct instances of the inferred type
+;;
+;;  Example:
+;;   > (bst-constructor *t*)
+;;   #<FUNCTION MAKE-BST-1173>
 
 (defgeneric bst-map (function tr &optional into-bst))
 ;; Apply FUNCTION to every value in the binary search tree TR
@@ -371,45 +399,46 @@
 	 (with-slots ((l left) (v value) (r right)) tr
 	   (cond ((null v) (values (,constructor) t))
 		 ((funcall (if test test ,test) v x)
-		  (let ((nextr (when r
-				 (multiple-value-bind (next empty)
-				     (bst-remove x r
-						 :first-only first-only
-						 :test test)
-				   (when (not empty) next)))))
-		    (values (,constructor :left l :value v :right nextr)
-			    nil)))
+		  (let ((nextr (when r (multiple-value-bind (next empty)
+					   (bst-remove x r
+					       :first-only first-only
+					       :test test)
+					 (when (not empty) next)))))
+		    (values (,constructor :left l :value v :right nextr) nil)))
 		 ((funcall (if test test ,test) x v)
-		  (let ((nextl (when l
-				 (multiple-value-bind (next empty)
-				     (bst-remove x l
-						 :first-only first-only
-						 :test test)
-				   (when (not empty) next)))))
+		  (let ((nextl (when l (multiple-value-bind (next empty)
+					   (bst-remove x l
+					       :first-only first-only
+					       :test test)
+					 (when (not empty) next)))))
 		    (values (,constructor :left nextl :value v :right r) nil)))
 		 ((and (null l) (null r)) (values (,constructor) t))
-		 ((null l) (if first-only r (bst-remove x r
-							:first-only nil
-							:test test)))
-		 ((null r) (if first-only l (bst-remove x l
-							:first-only nil
-							:test test)))
+		 ((null l) (if first-only
+			       (values r nil)
+			       (bst-remove x r :first-only nil :test test)))
+		 ((null r) (if first-only
+			       (values l nil)
+			       (bst-remove x l :first-only nil :test test)))
 		 (t (let* ((nextl (if first-only
 				      l
 				      (multiple-value-bind (next empty)
 					  (bst-remove x l
-						      :first-only nil
-						      :test test)
+					      :first-only nil
+					      :test test)
 					(when (not empty) next))))
 			   (nextv (bst-min r))
 			   (nextr (multiple-value-bind (next empty)
 				      (bst-remove nextv r
-						  :first-only t
-						  :test test)
+					  :first-only t
+					  :test test)
 				    (when (not empty) next))))
 		      (values
 		       (,constructor :left nextl :value nextv :right nextr)
 		       nil))))))
+       
+       (defmethod bst-clear ((tr ,struct))
+	 "Return an empty binary search tree of the same type as TR."
+	 (,constructor))
        
        (defmethod bst-member ((x ,element-type) (tr ,struct) &optional test)
 	 "If found, retrieve the subtree of TR containing element X."
@@ -436,6 +465,10 @@
 	    (list v)
 	    (when (not (null r)) (bst-to-list r)))))
 
+       (defmethod bst-constructor ((tr ,struct))
+	 "Return the function used to construct instances of the type of TR."
+	 (function ,constructor))
+
        (defmethod bst-map (function (tr ,struct) &optional into-bst)
 	 "Apply FUNCTION to every value in the binary search tree TR"
 	 (with-slots ((l left) (v value) (r right)) tr
@@ -443,9 +476,7 @@
 		 (newv (funcall function v))
 		 (newr (when r (bst-map function r into-bst))))
 	     (if into-bst
-		 (funcall (intern (concatenate 'string "MAKE-"
-					       (symbol-name
-						(type-of into-bst))))
+		 (funcall (bst-constructor into-bst)
 			  :left newl
 			  :value newv
 			  :right newr)

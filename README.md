@@ -196,6 +196,22 @@ Return a copy of the bst TR sans elements matching X.
   #S(BST-1173 :LEFT NIL :VALUE "hello" :RIGHT NIL)
 ```
 
+#### bst-clear (tr)
+Return an empty binary search tree of the same type as TR.
+
+#### Parameters:
+   TR: Tree from which to infer type to create a new tree
+
+#### Return:
+   An empty [new] binary search tree, of the same type as TR.
+
+#### Example:
+```
+  > (bst-clear *t*)
+  #S(BST-1173 :LEFT NIL :VALUE NIL :RIGHT NIL)
+```
+
+
 ### bst-member (x tr &optional test)
 If found, retrieve the subtree of binary search tree TR containing element X.
 
@@ -250,6 +266,21 @@ Convert the binary search tree TR into an ordered list.
 ```
   > (bst-to-list *t*)
   ("hello" "world")
+```
+
+### bst-constructor (tr)
+Return the function used to construct instances of the type of TR.
+
+#### Parameters:
+   TR: Binary search tree from which type will be inferred
+
+#### Returns:
+   A function to construct instances of the inferred type
+
+#### Example:
+```
+  > (bst-constructor *t*)
+  #<FUNCTION MAKE-BST-1173>
 ```
 
 ### bst-map (function tr &optional into-bst)
