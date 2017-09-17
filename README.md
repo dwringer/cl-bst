@@ -196,7 +196,7 @@ Return a copy of the bst TR sans elements matching X.
   #S(BST-1173 :LEFT NIL :VALUE "hello" :RIGHT NIL)
 ```
 
-#### bst-clear (tr)
+### bst-clear (tr)
 Return an empty binary search tree of the same type as TR.
 
 #### Parameters:
