@@ -15,7 +15,7 @@ allow subsequent such instances to be used without any problems.  The
 aliases DEFINE-BST-PROTOTYPE and DEFINE-FM-PROTOTYPE can be used for
 clarity in this purpose.
 
-#### bstins (elt tr &key (test #'<))
+### bstins (elt tr &key (test #'<))
 Insert element to abstract BST
 
 #### Parameters:
@@ -26,7 +26,7 @@ Insert element to abstract BST
 #### Returns:
     A new BST made from elements of TR with ELT inserted
 
-#### bstrem (elt tr &key (all nil) (test #'<))
+### bstrem (elt tr &key (all nil) (test #'<))
 Remove matching element[s] from abstract BST
 
 #### Parameters:
@@ -40,7 +40,7 @@ Remove matching element[s] from abstract BST
 #### Returns:
    A new BST condensed from elements of TR with ELT(s) removed
 
-#### bstmem (elt tr &key (test #'<))
+### bstmem (elt tr &key (test #'<))
 Determine membership of element in abstract BST
 
 #### Parameters:
@@ -53,7 +53,7 @@ Determine membership of element in abstract BST
 #### Returns:
    The sub-tree of bst TR with a value matching ELT at its root.
 
-#### mkbst (&optional initial-contents (test #'<))
+### mkbst (&optional initial-contents (test #'<))
 Make an asbtract BST, accepting any type but requiring explicit comparators
 
 #### Parameters:
