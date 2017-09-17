@@ -273,6 +273,33 @@
   (let* ((type (intern (concatenate 'string "BST-NODE-" id)))
 	 (elem-type (intern (concatenate 'string "BST-ELEM-" id)))
 	 (struct (intern (concatenate 'string "BST-" id))))
+
+    ;; (defun make-insert-method (name uniques-key? overwrite-key? test-key?
+    ;; 			       &key uniques-val overwrite-val test-val)
+    ;;   (macrolet ((create-keyword-param (name include? default)
+    ;; 		   `(when ,include?
+    ;; 		      (setf params (append params
+    ;; 					   (list (if ,default
+    ;; 						     (list ',name ,default)
+    ;; 						     ',name)))))))
+    ;; 	(let ((params `((x ,element-type) (tr ,struct))))
+    ;; 	  (when (or uniques-key? overwrite-key? test-key?)
+    ;; 	    (setf params (append params (list '&key))))
+    ;; 	  (create-keyword-param unique-only uniques-key? uniques-val)
+    ;; 	  (create-keyword-param overwrite overwrite-key? overwrite-val)
+    ;; 	  (create-keyword-param test test-key? test-val)
+    ;; 	  `(defmethod ,name ,params
+    ;; 	     (macrolet ((%bst-insert-x (bst)
+    ;; 			  ,(append `(bst-insert x ','bst)
+    ;; 				   (when uniques-key?
+    ;; 				     (list :unique-only 'unique-only))
+    ;; 				   (when overwrite-key?
+    ;; 				     (list :overwrite 'overwrite))
+    ;; 				   (when test-key?
+    ;; 				     (list :test 'test)))))
+    ;; 	       ;; ...
+    ;; 	     )))))
+    
     `(progn
        (deftype ,type () '(or null ,struct))
        (deftype ,elem-type () '(or null ,element-type))
@@ -310,6 +337,24 @@
 			       v
 			       r))
 		   (t (if overwrite (%make-bst l x r) tr))))))
+
+       ;; (defmethod bst-fast-insert ((x ,element-type) (tr ,struct))
+       ;; 	 "Noncustomized bst-insert but faster, with only implicit comparisons"
+       ;; 	 (macrolet ((%bst-insert-x (bst)
+       ;; 		      `(bst-fast-insert x ,bst))
+       ;; 		    (%make-bst (l v r)
+       ;; 		      `(,',constructor :left ,l :value ,v :right ,r)))
+       ;; 	   (with-slots ((l left) (v value) (r right)) tr
+       ;; 	     (cond ((null v) (,constructor :value x))
+       ;; 		   ((funcall ,test v x)
+       ;; 		    (%make-bst l v (if (null r)
+       ;; 				       (,constructor :value x)
+       ;; 				       (%bst-insert-x r))))
+       ;; 		   (t (%make-bst (if (null l)
+       ;; 				   (,constructor :value x)
+       ;; 				   (%bst-insert-x l))
+       ;; 			       v
+       ;; 			       r))))))
        
        (defmethod bst-set-insert ((x ,element-type) (tr ,struct))
 	 "Nondestructive overwriting set insert of X into bst TR."
