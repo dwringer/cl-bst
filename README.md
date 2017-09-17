@@ -30,7 +30,6 @@ Insert element to abstract BST
 ```
   > (bstins 3 (mkbst))
   #S(BST::BST-0 :LEFT NIL :VALUE 3 :RIGHT NIL)
-
 ```
 
 ### bstrem (elt tr &key (all nil) (test #'<))
