@@ -276,7 +276,7 @@ Insert all values from LST into the bst TR.
    TR: Binary search tree into which values will be inserted
 
 #### Keyword parameters:
-> - This function uses the same keyword parameters as BST-INSERT -
+>   This function uses the same keyword parameters as BST-INSERT.
 
 #### Example:
 ```
