@@ -707,8 +707,8 @@
 		       (bst-to-list result))))
 
        (test-pre-method bst-remove (7)
-			(bst-insert-list '(3 7 6 9 5 6 3 7 45 9 7)
+			(bst-insert-list '(3 7 6 9 5 6 3 7 45 9 4 7)
 					 (make-bst :element-type integer))
 			(orig) (result)
-	(assert (equal '(3 3 5 6 6 7 7 9 9 45)
+	(assert (equal '(3 3 4 5 6 6 7 7 9 9 45)
 		       (bst-to-list result)))))))

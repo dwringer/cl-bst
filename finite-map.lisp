@@ -123,8 +123,8 @@
 (defvar *next-fm-id* 0)
 (defvar *cached-fm-ids* (make-hash-table :test #'equal))
 
-(defun finite-map-id (key-element-type value-element-type test)
-  (let* ((args (list key-element-type value-element-type test))
+(defun finite-map-id (key-element-type value-element-type test pkg-name)
+  (let* ((args (list key-element-type value-element-type test pkg-name))
 	 (cached-id (gethash args *cached-fm-ids*)))
     (if (null cached-id)
 	(values (let ((id (format nil "~A" *next-fm-id*)))
@@ -140,7 +140,8 @@
  			     (test #'string<))
   "Create a typed finite map using a custom-typed BST implementation"
   (multiple-value-bind (id cached)
-      (finite-map-id key-element-type value-element-type test)
+      (finite-map-id key-element-type value-element-type test
+		     (package-name *package*))
     (let ((constructor (intern (concatenate 'string "MAKE-FINITE-MAP-" id)))
 	  (record-struct
 	   (intern (concatenate 'string "FINITE-MAP-RECORD-" id))))
