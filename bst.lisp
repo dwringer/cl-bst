@@ -309,7 +309,9 @@
 					   (,constructor :value x)
 					   (%bst-insert-x r))))
 		       (,(if (not uniques-key?)
-			     `(funcall ,test-form x v)
+			     (if uniques-val
+				 `(funcall ,test-form x v)
+				 't)
 			     `(or (not unique-only)
 				  (funcall ,test-form x v)))
 			(%make-bst (if (null l)
@@ -317,14 +319,14 @@
 				       (%bst-insert-x l))
 				   v
 				   r))
-		       ,@(when uniques-key?
-			      (cond (overwrite-key?
-				     '((t (if overwrite
+		       ,@(if (or uniques-key? uniques-val)
+			     (cond (overwrite-key?
+				    '((t (if overwrite
 					     (%make-bst l x r)
 					     tr))))
-				    (overwrite-val
-				     '((t (%make-bst l x r))))
-				    (t '((t tr))))))))))))
+				   (overwrite-val
+				    '((t (%make-bst l x r))))
+				   (t '((t tr))))))))))))
     
     `(progn
        (deftype ,type () '(or null ,struct))
@@ -336,6 +338,7 @@
 
        ,(make-insert-method 'bst-insert t t t :overwrite-val nil)
        ,(make-insert-method 'bst-set-insert nil nil nil :uniques-val t :overwrite-val t)
+       ;; ,(make-insert-method 'bst-fast-insert nil nil nil)
        
        (defmethod bst-test ((tr ,struct))
 	 "Return the test function used by the type of binary search tree TR."
@@ -367,23 +370,23 @@
        ;; 			       r))
        ;; 		   (t (if overwrite (%make-bst l x r) tr))))))
 
-       ;; ;; (defmethod bst-fast-insert ((x ,element-type) (tr ,struct))
-       ;; ;;  "Noncustomized bst-insert but faster, with only implicit comparisons"
-       ;; ;; 	 (macrolet ((%bst-insert-x (bst)
-       ;; ;; 		      `(bst-fast-insert x ,bst))
-       ;; ;; 		    (%make-bst (l v r)
-       ;; ;; 		      `(,',constructor :left ,l :value ,v :right ,r)))
-       ;; ;; 	   (with-slots ((l left) (v value) (r right)) tr
-       ;; ;; 	     (cond ((null v) (,constructor :value x))
-       ;; ;; 		   ((funcall ,test v x)
-       ;; ;; 		    (%make-bst l v (if (null r)
-       ;; ;; 				       (,constructor :value x)
-       ;; ;; 				       (%bst-insert-x r))))
-       ;; ;; 		   (t (%make-bst (if (null l)
-       ;; ;; 				   (,constructor :value x)
-       ;; ;; 				   (%bst-insert-x l))
-       ;; ;; 			       v
-       ;; ;; 			       r))))))
+       ;; (defmethod bst-fast-insert ((x ,element-type) (tr ,struct))
+       ;;  "Noncustomized bst-insert but faster, with only implicit comparisons"
+       ;; 	 (macrolet ((%bst-insert-x (bst)
+       ;; 		      `(bst-fast-insert x ,bst))
+       ;; 		    (%make-bst (l v r)
+       ;; 		      `(,',constructor :left ,l :value ,v :right ,r)))
+       ;; 	   (with-slots ((l left) (v value) (r right)) tr
+       ;; 	     (cond ((null v) (,constructor :value x))
+       ;; 		   ((funcall ,test v x)
+       ;; 		    (%make-bst l v (if (null r)
+       ;; 				       (,constructor :value x)
+       ;; 				       (%bst-insert-x r))))
+       ;; 		   (t (%make-bst (if (null l)
+       ;; 				   (,constructor :value x)
+       ;; 				   (%bst-insert-x l))
+       ;; 			       v
+       ;; 			       r))))))
        
        ;; (defmethod bst-set-insert ((x ,element-type) (tr ,struct))
        ;; 	 "Nondestructive overwriting set insert of X into bst TR."
