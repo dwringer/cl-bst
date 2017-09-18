@@ -302,8 +302,8 @@ Insert all values from LST into the bst TR.
    TR: Binary search tree into which values will be inserted
 
 #### Keyword parameters:
->   This function uses the same keyword parameters as BST-INSERT
-   AS-SET: If true, other keywords are ignored and BST-SET-INSERT is used
+>   This function uses the same keyword parameters as BST-INSERT  
+  AS-SET: If true, other keywords are ignored and BST-SET-INSERT is used
 
 #### Example:
 ```
