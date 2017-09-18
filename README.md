@@ -155,17 +155,17 @@ Nondestructive insert of value X into binary search tree TR.
  Nondestructive overwriting set insert of X into bst TR.
 
 ### Parameters:
-  X: The element (of type ELEMENT-TYPE) to be inserted to the BST
-  TR: The binary search tree into which X will be inserted
+  X: The element (of type ELEMENT-TYPE) to be inserted to the BST  
+  TR: The binary search tree into which X will be inserted  
 
 #### Returns:
   A BST created from TR with a [possibly additional] node representing X.
   
 #### Example:
 ```
-  > (progn (bst-set-insert "hello" *t*) 
-           (bst-set-insert "hello" *t*)
-		   (bst-set-insert "hello" *t*))
+  > (bst-set-insert "hello" 
+      (bst-set-insert "hello"
+        (bst-set-insert "hello" *t*)))
   #S(BST-1173
      :LEFT #S(BST-1173 :LEFT NIL :VALUE "hello" :RIGHT NIL)
      :VALUE "world"
