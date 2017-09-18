@@ -199,7 +199,7 @@ Find the maximum (rightmost branch) value in the given bst TR.
 #### Example:
 ```
   > (bst-max *t*)
-  "hello"
+  "world"
 ```
 
 ### bst-remove (x tr &key (first-only t) test)
