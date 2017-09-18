@@ -303,7 +303,8 @@ Insert all values from LST into the bst TR.
 
 #### Keyword parameters:
 >   This function uses the same keyword parameters as BST-INSERT  
-  AS-SET: If true, other keywords are ignored and BST-SET-INSERT is used
+
+   AS-SET: If true, other keywords are ignored and BST-SET-INSERT is used
 
 #### Example:
 ```
