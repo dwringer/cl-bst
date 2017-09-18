@@ -28,7 +28,6 @@
   (:use :common-lisp
 	:deftest)
   (:export :make-finite-map
-	   :bst
 	   :finite-map-bind
 	   :finite-map-unbind
 	   :finite-map-lookup
@@ -187,20 +186,20 @@
 	 "Nondestructive insert of a record to finite map FM, binding K->V."
 	 (,constructor
 	  :bst (bst:bst-set-insert (,record-constructor :key k :value v)
-				   (slot-value fm 'bst))))
+				   (slot-value fm 'fm::bst))))
 
        (defmethod finite-map-unbind ((k ,key-element-type)
 				     (fm ,struct))
 	 "Return finite map copy w/its BST stripped of records w/key K"
 	 (,constructor
 	  :bst (bst:bst-remove (,record-constructor :key k)
-			       (slot-value fm 'bst))))
+			       (slot-value fm 'fm::bst))))
        
        (defmethod finite-map-lookup ((k ,key-element-type)
 				     (fm ,struct))
 	 "If finite map FM contains record w/key K, retrieve associated value."
 	 (let ((found (bst:bst-member (,record-constructor :key k)
-				      (slot-value fm 'bst))))
+				      (slot-value fm 'fm::bst))))
 	   (if found
 	       (slot-value (slot-value found 'bst::value) 'value)
 	       (error 'finite-map-key-not-found k))))
@@ -220,7 +219,7 @@
        (test-inst make-finite-map ()
 		  (fm)
 	  (assert (not (null fm)))
-	  (let ((bst (slot-value fm 'bst)))
+	  (let ((bst (slot-value fm 'fm::bst)))
 	    (bst::assert-null-bst bst)))
 
        (test-pre-method finite-map-bind ("hello" "world")
@@ -228,7 +227,7 @@
 			(orig) (result)
 		(assert (not (null orig)))
 		(assert (not (null result)))
-		(let* ((bst (slot-value result 'bst))
+		(let* ((bst (slot-value result 'fm::bst))
 		       (record (slot-value bst 'bst::value)))
 		  (with-slots ((k key) (v value)) record
 		    (assert (string= k "hello"))
@@ -239,5 +238,5 @@
 			  (finite-map-bind "hello" "world" fm))
 			(orig) (result)
 		(assert (not (null orig)))
-		(let ((bst (slot-value result 'bst)))
+		(let ((bst (slot-value result 'fm::bst)))
 		  (bst::assert-null-bst bst))))))

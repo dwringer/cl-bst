@@ -282,10 +282,11 @@
     					   (list (if ,default
     						     (list ',name ,default)
     						     ',name))))
-    		      (setf insert-args (append insert-args
-    						(list '',(intern (symbol-name name)
-    							       "KEYWORD")
-    						      '',name))))))
+    		      (setf insert-args
+			    (append insert-args
+				    (list '',(intern (symbol-name name)
+						     "KEYWORD")
+					  '',name))))))
     	(let ((insert-args nil)
     	      (params `((x ,element-type) (tr ,struct)))
 	      (test-form (cond (test-key? 'test)
@@ -327,6 +328,82 @@
 				   (overwrite-val
 				    '((t (%make-bst l x r))))
 				   (t '((t tr))))))))))))
+
+    (defun make-remove-method (name first-only-key? test-key?
+			       &key first-only-val test-val)
+      (macrolet ((create-keyword-param (name include? default)
+		   `(when ,include?
+		      (setf params (append params
+					   (list (if ,default
+						     (list ',name ,default)
+						     ',name))))
+		      (setf remove-args
+			    (append remove-args
+				    (list '',(intern (symbol-name name)
+						     "KEYWORD")
+					  '',name))))))
+	(let ((remove-args nil)
+	      (params `((x ,element-type) (tr ,struct)))
+	      (test-form (cond (test-key? 'test)
+			       (test-val test-val)
+			       (t test))))
+	  (when (or first-only-key? test-key?)
+	    (setf params (append params (list '&key))))
+	  (create-keyword-param first-only first-only-key? first-only-val)
+	  (create-keyword-param test test-key? test-val)
+	  `(defmethod ,name ,params
+	     (macrolet ((%bst-remove-x (bst)
+			  `(,',name x ,bst ,,@remove-args))
+			(%make-bst (l v r)
+			  `(,',constructor :left ,l :value ,v :right ,r))
+			(%when-not-empty (bst-remove-form)
+			  `(multiple-value-bind (next empty) ,bst-remove-form
+			     (when (not empty) next))))
+	       (with-slots ((l left) (v value) (r right)) tr
+		 ,@(when test-key? `((when (not test) (setf test ,test))))
+		 (cond ((null v) (values (,constructor) t))
+		       ((funcall ,test-form v x)
+			(values (%make-bst l v (when r (%when-not-empty
+							(%bst-remove-x r))))
+				nil))
+		       ((funcall ,test-form x v)
+			(values (%make-bst (when l (%when-not-empty
+						    (%bst-remove-x l))) v r)
+				nil))
+		       ((and (null l) (null r)) (values (,constructor) t))
+		       ((null l) ,(cond (first-only-key?
+					 '(if first-only
+					   (values r nil)
+					   (%bst-remove-x r)))
+					(first-only-val
+					 '(values r nil))
+					(t '(%bst-remove-x r))))
+		       ((null r) ,(cond (first-only-key?
+					 '(if first-only
+					   (values l nil)
+					   (%bst-remove-x l)))
+					(first-only-val
+					 '(values l nil))
+					(t '(%bst-remove-x l))))
+		       (t (let* ((nextv (bst-min r)))
+			    (values (%make-bst
+				     ,(cond (first-only-key?
+					     '(if first-only
+					       l
+					       (%when-not-empty
+						(%bst-remove-x l))))
+					    (first-only-val
+					     'l)
+					    (t '(%when-not-empty
+						 (%bst-remove-x l))))
+				     nextv
+				     (%when-not-empty
+				      (,name nextv r
+					     ,@(when first-only-key?
+						     '(:first-only t))
+					     ,@(when test-key?
+						     '(:test test)))))
+				    nil))))))))))
     
     `(progn
        (deftype ,type () '(or null ,struct))
@@ -420,38 +497,39 @@
 	   (if (null r)
 	       (slot-value tr 'value)
 	       (bst-max r))))
-       
-       (defmethod bst-remove ((x ,element-type) (tr ,struct)
-			      &key (first-only t) test)
-	 "Return a copy of the bst TR sans elements matching X."
-	 (macrolet ((%bst-remove-x (bst)
-		      `(bst-remove x ,bst :first-only first-only :test test))
-		    (%make-bst (l v r)
-		      `(,',constructor :left ,l :value ,v :right ,r))
-		    (%when-not-empty (bst-remove-form)
-		      `(multiple-value-bind (next empty) ,bst-remove-form
-			 (when (not empty) next))))
-	   (with-slots ((l left) (v value) (r right)) tr
-	     (when (not test) (setf test ,test))
-	     (cond ((null v) (values (,constructor) t))
-		   ((funcall test v x)
-		    (values (%make-bst l v (when r (%when-not-empty
-						    (%bst-remove-x r)))) nil))
-		   ((funcall test x v)
-		    (values (%make-bst (when l (%when-not-empty
-						(%bst-remove-x l))) v r) nil))
-		   ((and (null l) (null r)) (values (,constructor) t))
-		   ((null l) (if first-only (values r nil) (%bst-remove-x r)))
-		   ((null r) (if first-only (values l nil) (%bst-remove-x l)))
-		   (t (let* ((nextv (bst-min r)))
-			(values
-			 (%make-bst
-			  (if first-only l (%when-not-empty (%bst-remove-x l)))
-			  nextv
-			  (%when-not-empty (bst-remove nextv r
-						       :first-only t
-						       :test test)))
-			 nil)))))))
+
+       ,(make-remove-method 'bst-remove t t :first-only-val t)
+       ;; (defmethod bst-remove ((x ,element-type) (tr ,struct)
+       ;; 			      &key (first-only t) test)
+       ;; 	 "Return a copy of the bst TR sans elements matching X."
+       ;; 	 (macrolet ((%bst-remove-x (bst)
+       ;; 		      `(bst-remove x ,bst :first-only first-only :test test))
+       ;; 		    (%make-bst (l v r)
+       ;; 		      `(,',constructor :left ,l :value ,v :right ,r))
+       ;; 		    (%when-not-empty (bst-remove-form)
+       ;; 		      `(multiple-value-bind (next empty) ,bst-remove-form
+       ;; 			 (when (not empty) next))))
+       ;; 	   (with-slots ((l left) (v value) (r right)) tr
+       ;; 	     (when (not test) (setf test ,test))
+       ;; 	     (cond ((null v) (values (,constructor) t))
+       ;; 		   ((funcall test v x)
+       ;; 		    (values (%make-bst l v (when r (%when-not-empty
+       ;; 						    (%bst-remove-x r)))) nil))
+       ;; 		   ((funcall test x v)
+       ;; 		    (values (%make-bst (when l (%when-not-empty
+       ;; 						(%bst-remove-x l))) v r) nil))
+       ;; 		   ((and (null l) (null r)) (values (,constructor) t))
+       ;; 		   ((null l) (if first-only (values r nil) (%bst-remove-x r)))
+       ;; 		   ((null r) (if first-only (values l nil) (%bst-remove-x l)))
+       ;; 		   (t (let* ((nextv (bst-min r)))
+       ;; 			(values
+       ;; 			 (%make-bst
+       ;; 			  (if first-only l (%when-not-empty (%bst-remove-x l)))
+       ;; 			  nextv
+       ;; 			  (%when-not-empty (bst-remove nextv r
+       ;; 						       :first-only t
+       ;; 						       :test test)))
+       ;; 			 nil)))))))
        
        (defmethod bst-clear ((tr ,struct))
 	 "Return an empty binary search tree of the same type as TR."
