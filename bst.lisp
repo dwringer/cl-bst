@@ -336,13 +336,77 @@
 	 (value nil :type ,elem-type)
 	 (right nil :type ,type))
 
-       ,(make-insert-method 'bst-insert t t t :overwrite-val nil)
-       ,(make-insert-method 'bst-set-insert nil nil nil :uniques-val t :overwrite-val t)
-              
+       
        (defmethod bst-test ((tr ,struct))
 	 "Return the test function used by the type of binary search tree TR."
 	 ,test)
-              
+       
+       ,(make-insert-method 'bst-insert t t t :overwrite-val nil)
+       ;; (defmethod bst-insert ((x ,element-type) (tr ,struct)
+       ;; 			      &key unique-only overwrite test)
+       ;; 	 "Nondestructive insert of value X into binary search tree TR."
+       ;; 	 (macrolet ((%bst-insert-x (bst)
+       ;; 		      `(bst-insert x ,bst
+       ;; 				   :unique-only unique-only
+       ;; 				   :overwrite overwrite
+       ;; 				   :test test))
+       ;; 		    (%make-bst (l v r)
+       ;; 		      `(,',constructor :left ,l :value ,v :right ,r)))
+       ;; 	   (with-slots ((l left) (v value) (r right)) tr
+       ;; 	     (when (not test) (setf test ,test))
+       ;; 	     (cond ((null v) (,constructor :value x))
+       ;; 		   ((funcall test v x)
+       ;; 		    (%make-bst l v (if (null r)
+       ;; 				       (,constructor :value x)
+       ;; 				       (%bst-insert-x r))))
+       ;; 		   ((or (not unique-only)
+       ;; 			(funcall test x v))
+       ;; 		    (%make-bst (if (null l)
+       ;; 				   (,constructor :value x)
+       ;; 				   (%bst-insert-x l))
+       ;; 			       v
+       ;; 			       r))
+       ;; 		   (t (if overwrite (%make-bst l x r) tr))))))
+
+       ;; ,(make-insert-method 'bst-fast-insert nil nil nil)
+       ;; (defmethod bst-fast-insert ((x ,element-type) (tr ,struct))
+       ;;  "Noncustomized bst-insert but faster, with only implicit comparisons"
+       ;; 	 (macrolet ((%bst-insert-x (bst)
+       ;; 		      `(bst-fast-insert x ,bst))
+       ;; 		    (%make-bst (l v r)
+       ;; 		      `(,',constructor :left ,l :value ,v :right ,r)))
+       ;; 	   (with-slots ((l left) (v value) (r right)) tr
+       ;; 	     (cond ((null v) (,constructor :value x))
+       ;; 		   ((funcall ,test v x)
+       ;; 		    (%make-bst l v (if (null r)
+       ;; 				       (,constructor :value x)
+       ;; 				       (%bst-insert-x r))))
+       ;; 		   (t (%make-bst (if (null l)
+       ;; 				   (,constructor :value x)
+       ;; 				   (%bst-insert-x l))
+       ;; 			       v
+       ;; 			       r))))))
+       
+       ,(make-insert-method 'bst-set-insert nil nil nil :uniques-val t :overwrite-val t)
+       ;; (defmethod bst-set-insert ((x ,element-type) (tr ,struct))
+       ;; 	 "Nondestructive overwriting set insert of X into bst TR."
+       ;; 	 (macrolet ((%bst-insert-x (bst) `(bst-set-insert x ,bst))
+       ;; 		    (%make-bst (l v r)
+       ;; 		      `(,',constructor :left ,l :value ,v :right ,r)))
+       ;; 	   (with-slots ((l left) (v value) (r right)) tr
+       ;; 	     (cond ((null v) (,constructor :value x))
+       ;; 		   ((funcall ,test v x)
+       ;; 		    (%make-bst l v (if (null r)
+       ;; 				       (,constructor :value x)
+       ;; 				       (%bst-insert-x r))))
+       ;; 		   ((funcall ,test x v)
+       ;; 		    (%make-bst (if (null l)
+       ;; 				   (,constructor :value x)
+       ;; 				   (%bst-insert-x l))
+       ;; 			       v
+       ;; 			       r))
+       ;; 		   (t (%make-bst l x r))))))
+       
        (defmethod bst-min ((tr ,struct))
 	 "Find the minimum (leftmost branch) value in the given bst TR."
 	 (let ((l (slot-value tr 'left)))
