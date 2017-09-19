@@ -341,7 +341,8 @@
 							    tr))))
 				   (overwrite-val '((t (%make-bst l x r))))
 				   (t '((t tr)))))))))
-	  (defmethod ,name ,method-params (,function-name x tr ,@method-args)))))
+	  (defmethod ,name ,method-params
+	      (,function-name x tr ,@method-args)))))
     
     (defun make-remove-method (name first-only-key? test-key?
 			       &key first-only-val test-val)
