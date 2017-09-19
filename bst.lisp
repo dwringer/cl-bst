@@ -274,32 +274,45 @@
 	 (elem-type (intern (concatenate 'string "BST-ELEM-" id)))
 	 (struct (intern (concatenate 'string "BST-" id))))
     
-    (defun make-insert-function (name uniques-key? overwrite-key? test-key?
+    (defun make-insert-method (name uniques-key? overwrite-key? test-key?
 				 &key uniques-val (overwrite-val t) test-val)
       (let ((function-name
 	     (intern (concatenate 'string (symbol-name name) "-" id "-FN")))
 	    (insert-args nil)
+	    (method-args nil)
 	    (params '(x tr))
+	    (method-params `((x ,element-type) (tr ,struct)))
 	    (test-form (cond (test-key? 'test)
 			     (test-val test-val)
 			     (t test))))
 	(when (or uniques-key? overwrite-key? test-key?)
+	  (setf method-params (append method-params (list '&key)))
 	  (setf params (append params (list '&key))))
-	(macrolet ((create-keyword-param (name include? default)
+	(macrolet ((create-keyword-param (kwname include? default)
 		     `(when ,include?
 			(setf params (append params
 					     (list (if ,default
-						       (list ',name ,default)
-						       ',name))))
+						       (list ',kwname ,default)
+						       ',kwname))))
 			(setf insert-args
 			      (append insert-args
-				      (list '',(intern (symbol-name name)
+				      (list '',(intern (symbol-name kwname)
 						       "KEYWORD")
-					    '',name))))))
+					    '',kwname)))
+			(setf method-params (append method-params
+					     (list (if ,default
+						       (list ',kwname ,default)
+						       ',kwname))))
+			(setf method-args
+			      (append method-args
+				      (list ',(intern (symbol-name kwname)
+						      "KEYWORD")
+					    ',kwname))))))			
 	  (create-keyword-param unique-only uniques-key? uniques-val)
 	  (create-keyword-param overwrite overwrite-key? overwrite-val)
 	  (create-keyword-param test test-key? test-val))
-	`(defun ,function-name ,params
+	`(progn
+	  (defun ,function-name ,params
 	   (macrolet ((%bst-insert-x (bst)
 			`(,',function-name x ,bst ,,@insert-args))
 		      (%make-bst (l v r)
@@ -327,32 +340,8 @@
 							    (%make-bst l x r)
 							    tr))))
 				   (overwrite-val '((t (%make-bst l x r))))
-				   (t '((t tr)))))))))))
-    
-    (defun make-insert-method (name uniques-key? overwrite-key? test-key?
-    			       &key uniques-val (overwrite-val t) test-val)
-      (let ((function-name (intern (concatenate 'string
-						(symbol-name name)
-						"-" id "-FN")))
-	    (insert-args nil)
-	    (params `((x ,element-type) (tr ,struct))))
-	(when (or uniques-key? overwrite-key? test-key?)
-	  (setf params (append params (list '&key))))
-	(macrolet ((create-keyword-param (name include? default)
-		     `(when ,include?
-			(setf params (append params
-					     (list (if ,default
-						       (list ',name ,default)
-						       ',name))))
-			(setf insert-args
-			      (append insert-args
-				      (list ',(intern (symbol-name name)
-						      "KEYWORD")
-					    ',name))))))
-	  (create-keyword-param unique-only uniques-key? uniques-val)
-	  (create-keyword-param overwrite overwrite-key? overwrite-val)
-	  (create-keyword-param test test-key? test-val))
-	`(defmethod ,name ,params (,function-name x tr ,@insert-args))))
+				   (t '((t tr)))))))))
+	  (defmethod ,name ,method-params (,function-name x tr ,@method-args)))))
     
     (defun make-remove-method (name first-only-key? test-key?
 			       &key first-only-val test-val)
@@ -438,7 +427,6 @@
 	 "Return the test function used by the type of binary search tree TR."
 	 ,test)
 
-       ,(make-insert-function 'bst-insert t t t :overwrite-val nil)
        ,(make-insert-method 'bst-insert t t t :overwrite-val nil)
        ;; (defmethod bst-insert ((x ,element-type) (tr ,struct)
        ;; 			      &key unique-only overwrite test)
@@ -484,7 +472,7 @@
        ;; 				   (%bst-insert-x l))
        ;; 			       v
        ;; 			       r))))))
-       ,(make-insert-function 'bst-set-insert nil nil nil :uniques-val t :overwrite-val t)
+
        ,(make-insert-method 'bst-set-insert nil nil nil :uniques-val t :overwrite-val t)
        ;; (defmethod bst-set-insert ((x ,element-type) (tr ,struct))
        ;; 	 "Nondestructive overwriting set insert of X into bst TR."
