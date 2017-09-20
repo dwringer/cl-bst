@@ -296,6 +296,14 @@
 		      :id ,id
 		      :constructor ,constructor)))))
 
+(defmacro kwarg-cond (use-kw?-var kw-default-var
+		      if-specifiable-code
+		      if-specified-code
+		      default-code)
+  `(cond (,use-kw?-var ,if-specifiable-code)
+	 (,kw-default-var ,if-specified-code)
+	 (t ,default-code)))
+
 (defmacro make-bst! (&key (element-type 'real) (test #'<) id constructor)
   (let* ((type (intern (concatenate 'string "BST-NODE-" id)))
 	 (elem-type (intern (concatenate 'string "BST-ELEM-" id)))
@@ -355,22 +363,21 @@
 			(%make-bst l v (if (null r)
 					   (,constructor :value x)
 					   (%bst-insert-x r))))
-		       (,(if (not uniques-key?)
-			     (if uniques-val
-				 `(funcall ,test-form x v)
-				 't)
-			     `(or (not unique-only)
-				  (funcall ,test-form x v)))
+		       (,(kwarg-cond uniques-key? uniques-val
+				     `(or (not unique-only)
+					  (funcall ,test-form x v))
+				     `(funcall ,test-form x v)
+				     't)
 			(%make-bst (if (null l)
 				       (,constructor :value x)
 				       (%bst-insert-x l))
 				   v
 				   r))
 		       ,@(if (or uniques-key? uniques-val)
-			     (cond (overwrite-key?
-				    '((t (if overwrite (%make-bst l x r) tr))))
-				   (overwrite-val '((t (%make-bst l x r))))
-				   (t '((t tr)))))))))
+			     (kwarg-cond overwrite-key? overwrite-val
+				 '((t (if overwrite (%make-bst l x r) tr)))
+				 '((t (%make-bst l x r)))
+				 '((t tr))))))))
 	   (defmethod ,name ,method-params
 	     (declare (,element-type x) (,struct tr))
 	     (,function-name x tr ,@method-args)))))
@@ -433,27 +440,30 @@
 				  nil))
 			 ((and (null l) (null r)) (values (,constructor) t))
 			 ((null l)
-			  ,(cond (first-only-key? '(if first-only
-						    (values r nil)
-						    (%bst-remove-x r)))
-				 (first-only-val '(values r nil))
-				 (t '(%bst-remove-x r))))
+			  ,(kwarg-cond first-only-key? first-only-val
+			       '(if first-only
+				 (values r nil)
+				 (%bst-remove-x r))
+			       '(values r nil)
+			       '(%bst-remove-x r)))
 			 ((null r)
-			  ,(cond (first-only-key? '(if first-only
-						    (values l nil)
-						    (%bst-remove-x l)))
-				 (first-only-val '(values l nil))
-				 (t '(%bst-remove-x l))))
+			  ,(kwarg-cond first-only-key? first-only-val
+			       '(if first-only
+				 (values l nil)
+				 (%bst-remove-x l))
+			       '(values l nil)
+			       '(%bst-remove-x l)))
 			 (t (let* ((nextv (bst-min r)))
 			      (values (%make-bst
-				       ,(cond (first-only-key?
-					       '(if first-only
-						 l
-						 (%when-not-empty
-						  (%bst-remove-x l))))
-					      (first-only-val 'l)
-					      (t '(%when-not-empty
-						   (%bst-remove-x l))))
+				       ,(kwarg-cond first-only-key?
+						    first-only-val
+					    '(if first-only
+					      l
+					      (%when-not-empty
+					       (%bst-remove-x l)))
+					    'l
+					    '(%when-not-empty
+					      (%bst-remove-x l)))
 				       nextv
 				       (%when-not-empty
 					(,name nextv r
@@ -701,4 +711,13 @@
 					 (make-bst :element-type integer))
 			(orig) (result)
 	(assert (equal '(3 3 4 5 6 6 7 7 9 9 45)
-		       (bst-to-list result)))))))
+		       (bst-to-list result))))
+
+       (test-pre-method bst-insert-list ((do (lst
+					      (i 0 (1+ i)))
+					     ((= i 1000000) lst)
+					   (push (random 10000000) lst)))
+			(make-bst :element-type integer)
+			(orig) (result)
+	(assert (equal 1000000 (length (bst-to-list result))))))))
+
