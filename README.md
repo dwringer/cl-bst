@@ -274,11 +274,11 @@ With implicit comparisons, find subtree of TR containing element X.
 
 #### Example:
 ```
-  > (bst-member "foo" *t*)
+  > (bst-fast-member "foo" *t*)
   NIL
-  > (bst-member "hello" *t*)
+  > (bst-fast-member "hello" *t*)
   #S(BST-1173 :LEFT NIL :VALUE "hello" :RIGHT NIL)
-  > (bst-member "world" *t*)
+  > (bst-fast-member "world" *t*)
   #S(BST-1173
      :LEFT #S(BST-1173 :LEFT NIL :VALUE "hello" :RIGHT NIL)
      :VALUE "world"
