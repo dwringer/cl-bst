@@ -21,6 +21,11 @@
 ;;;; WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 ;;;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ;;;; OTHER DEALINGS IN THE SOFTWARE.
+(declaim (optimize (speed 3)
+		   (compilation-speed 1)
+		   (safety 2)
+		   (debug 0)
+		   (space 0)))
 (when (not (find-package 'deftest)) (load "deftest"))
 (defpackage :bst
   (:use :common-lisp
@@ -33,6 +38,7 @@
 	   :bst-max
 	   :bst-test
 	   :bst-insert
+	   :bst-fast-insert
 	   :bst-set-insert
 	   :bst-remove
 	   :bst-clear
@@ -128,6 +134,16 @@
 ;;    UNIQUE-ONLY: If true, disallow multiple nodes with the same value
 ;;    OVERWRITE: If true and UNIQUE-ONLY, new insertions overwrite matches
 ;;    TEST: If present, overrides the BST's comparison function
+;;
+;;  Returns:
+;;    A BST created from TR with a [possibly additional] node representing X.
+
+(defgeneric bst-fast-insert (x tr))
+;; Nondestructive insert of value X into binary search tree TR.
+;;
+;;  Parameters:
+;;    X: The element (of type ELEMENT-TYPE) to be inserted to the BST
+;;    TR: The binary search tree into which X will be inserted
 ;;
 ;;  Returns:
 ;;    A BST created from TR with a [possibly additional] node representing X.
@@ -286,7 +302,9 @@
 	 (struct (intern (concatenate 'string "BST-" id)))
 	 (bst-insert-fn (intern (concatenate 'string "BST-INSERT-" id "-FN")))
 	 (bst-set-insert-fn
-	  (intern (concatenate 'string "BST-SET-INSERT-" id "-FN"))))
+	  (intern (concatenate 'string "BST-SET-INSERT-" id "-FN")))
+	 (bst-fast-insert-fn
+	  (intern (concatenate 'string "BST-FAST-INSERT-" id "-FN"))))
     
     (defun make-insert-method (name uniques-key? overwrite-key? test-key?
 			       &key uniques-val (overwrite-val t) test-val)
@@ -325,6 +343,7 @@
 	  (create-keyword-param test test-key? test-val))
 	`(progn
 	   (defun ,function-name ,params
+	     (declare (,element-type x) (,struct tr))
 	     (macrolet ((%bst-insert-x (bst)
 			  `(,',function-name x ,bst ,,@insert-args))
 			(%make-bst (l v r)
@@ -353,6 +372,7 @@
 				   (overwrite-val '((t (%make-bst l x r))))
 				   (t '((t tr)))))))))
 	   (defmethod ,name ,method-params
+	     (declare (,element-type x) (,struct tr))
 	     (,function-name x tr ,@method-args)))))
     
     (defun make-remove-method (name first-only-key? test-key?
@@ -392,6 +412,7 @@
 	  (create-keyword-param test test-key? test-val)
 	  `(progn
 	     (defun ,function-name ,params
+	       (declare (,element-type x) (,struct tr))
 	       (macrolet ((%bst-remove-x (bst)
 			    `(,',function-name x ,bst ,,@remove-args))
 			  (%make-bst (l v r)
@@ -442,6 +463,7 @@
 						       '(:test test)))))
 				      nil)))))))
 	     (defmethod ,name ,method-params
+	       (declare (,element-type x) (,struct tr))
 	       (,function-name x tr ,@method-args))))))
     
     `(progn
@@ -459,7 +481,7 @@
        ,(make-insert-method 'bst-insert t t t :overwrite-val nil)
        ;;  "Nondestructive insert of value X into binary search tree TR."
 
-       ;; ,(make-insert-method 'bst-fast-insert nil nil nil)
+       ,(make-insert-method 'bst-fast-insert nil nil nil)
        ;;  "Uncustomizable faster bst-insert, with only implicit comparisons"
 
        ,(make-insert-method 'bst-set-insert nil nil nil
@@ -528,14 +550,20 @@
        (defmethod bst-insert-list (lst (tr ,struct)
 				   &key unique-only overwrite test as-set)
 	 "Insert all values from LST into the bst TR."
-	 (macrolet ((bst-update (x bst)
-		      `(if as-set
-			   (,',bst-set-insert-fn ,x ,bst)
-			   (,',bst-insert-fn ,x ,bst
-					     :unique-only unique-only
-					     :overwrite overwrite
-					     :test test))))
-	   (dolist (x lst tr) (setf tr (bst-update x tr)))))
+	 (if as-set
+	     (macrolet ((bst-update (x bst)
+			  `(,',bst-set-insert-fn ,x ,bst)))
+	       (dolist (x lst tr) (setf tr (bst-update x tr))))
+	     (if (not (or unique-only test))
+		 (macrolet ((bst-update (x bst)
+			      `(,',bst-fast-insert-fn ,x ,bst)))
+		   (dolist (x lst tr) (setf tr (bst-update x tr))))
+		 (macrolet ((bst-update (x bst)
+			      `(,',bst-insert-fn ,x ,bst
+						 :unique-only unique-only
+						 :overwrite overwrite
+						 :test test)))
+		   (dolist (x lst tr) (setf tr (bst-update x tr)))))))
        
        (defmethod bst-constructor ((tr ,struct))
 	 "Return the function used to construct instances of the type of TR."

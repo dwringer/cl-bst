@@ -151,6 +151,27 @@ Nondestructive insert of value X into binary search tree TR.
      :RIGHT NIL)
 ```
 
+### bst-fast-insert (x tr)
+Nondestructive insert of value X into binary search tree TR.
+
+#### Parameters:
+   X: The element (of type ELEMENT-TYPE) to be inserted to the BST  
+   TR: The binary search tree into which X will be inserted  
+
+#### Returns:
+   A BST created from TR with an additional node representing X.
+
+#### Example:
+```
+  > (setf *t* (bst-fast-insert "world" *t*))
+  #S(BST-1173 :LEFT NIL :VALUE "world" :RIGHT NIL)
+  > (setf *t* (bst-fast-insert "hello" *t*))
+  #S(BST-1173
+     :LEFT #S(BST-1173 :LEFT NIL :VALUE "hello" :RIGHT NIL)
+     :VALUE "world"
+     :RIGHT NIL)
+```
+
 ### bst-set-insert (x tr)
  Nondestructive overwriting set insert of X into bst TR.
 

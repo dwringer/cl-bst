@@ -76,6 +76,7 @@
 		 (do* ((i 1 (+ i 1))
 		       (acc (list i) (cons i acc)))
 		      ((> i (length *tests*)) (reverse acc))))))
-    (cons 'progn
-	  (append forms
-		  (list '(setf deftest::*tests* nil))))))
+    (list 'time
+	  (cons 'progn
+		(append forms
+			(list '(setf deftest::*tests* nil)))))))
