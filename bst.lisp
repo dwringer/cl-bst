@@ -37,6 +37,7 @@
 	   :bst-remove
 	   :bst-clear
 	   :bst-member
+	   :bst-fast-member
 	   :bst-empty
 	   :bst-to-list
 	   :bst-insert-list
@@ -193,6 +194,16 @@
 ;;  Returns:
 ;;    BST with the root node containing a match of X, or NIL if not found.
 
+(defgeneric bst-fast-member (x tr))
+;; With implicit comparisons, find subtree of TR containing element X.
+;;
+;;  Parameters:
+;;    X: The element (of type ELEMENT-TYPE) for which to search
+;;    TR: The binary search tree in which X is to be sought
+;;
+;;  Returns:
+;;    BST with the root node containing a match of X, or NIL if not found.
+
 (defgeneric bst-empty (tr))
 ;; Return whether the given binary search tree TR is empty.
 ;;
@@ -272,10 +283,14 @@
 (defmacro make-bst! (&key (element-type 'real) (test #'<) id constructor)
   (let* ((type (intern (concatenate 'string "BST-NODE-" id)))
 	 (elem-type (intern (concatenate 'string "BST-ELEM-" id)))
-	 (struct (intern (concatenate 'string "BST-" id))))
+	 (struct (intern (concatenate 'string "BST-" id)))
+	 (bst-insert-fn
+	  (intern (concatenate 'string "BST-INSERT-" id "-FN")))
+	 (bst-set-insert-fn
+	  (intern (concatenate 'string "BST-SET-INSERT-" id "-FN"))))
     
     (defun make-insert-method (name uniques-key? overwrite-key? test-key?
-				 &key uniques-val (overwrite-val t) test-val)
+			       &key uniques-val (overwrite-val t) test-val)
       (let ((function-name
 	     (intern (concatenate 'string (symbol-name name) "-" id "-FN")))
 	    (insert-args nil)
@@ -290,19 +305,17 @@
 	  (setf params (append params (list '&key))))
 	(macrolet ((create-keyword-param (kwname include? default)
 		     `(when ,include?
-			(setf params (append params
-					     (list (if ,default
-						       (list ',kwname ,default)
-						       ',kwname))))
+			(let ((next-param (if ,default
+					      (list ',kwname ,default)
+					      ',kwname)))
+			  (setf params (append params (list next-param)))
+			  (setf method-params
+				(append method-params (list next-param))))
 			(setf insert-args
 			      (append insert-args
 				      (list '',(intern (symbol-name kwname)
 						       "KEYWORD")
 					    '',kwname)))
-			(setf method-params (append method-params
-					     (list (if ,default
-						       (list ',kwname ,default)
-						       ',kwname))))
 			(setf method-args
 			      (append method-args
 				      (list ',(intern (symbol-name kwname)
@@ -312,109 +325,125 @@
 	  (create-keyword-param overwrite overwrite-key? overwrite-val)
 	  (create-keyword-param test test-key? test-val))
 	`(progn
-	  (defun ,function-name ,params
-	   (macrolet ((%bst-insert-x (bst)
-			`(,',function-name x ,bst ,,@insert-args))
-		      (%make-bst (l v r)
-			`(,',constructor :left ,l :value ,v :right ,r)))
-	     (with-slots ((l left) (v value) (r right)) tr
-	       ,@(when test-key? `((when (not test) (setf test ,test))))
-	       (cond ((null v) (,constructor :value x))
-		     ((funcall ,test-form v x)
-		      (%make-bst l v (if (null r)
-					 (,constructor :value x)
-					 (%bst-insert-x r))))
-		     (,(if (not uniques-key?)
-			   (if uniques-val
-			       `(funcall ,test-form x v)
-			       't)
-			   `(or (not unique-only)
-				(funcall ,test-form x v)))
-		      (%make-bst (if (null l)
-				     (,constructor :value x)
-				     (%bst-insert-x l))
-				 v
-				 r))
-		     ,@(if (or uniques-key? uniques-val)
-			     (cond (overwrite-key? '((t (if overwrite
-							    (%make-bst l x r)
-							    tr))))
-				   (overwrite-val '((t (%make-bst l x r))))
-				   (t '((t tr)))))))))
-	  (defmethod ,name ,method-params
-	      (,function-name x tr ,@method-args)))))
-    
-    (defun make-remove-method (name first-only-key? test-key?
-			       &key first-only-val test-val)
-      (macrolet ((create-keyword-param (name include? default)
-		   `(when ,include?
-		      (setf params (append params
-					   (list (if ,default
-						     (list ',name ,default)
-						     ',name))))
-		      (setf remove-args
-			    (append remove-args
-				    (list '',(intern (symbol-name name)
-						     "KEYWORD")
-					  '',name))))))
-	(let ((remove-args nil)
-	      (params `((x ,element-type) (tr ,struct)))
-	      (test-form (cond (test-key? 'test)
-			       (test-val test-val)
-			       (t test))))
-	  (when (or first-only-key? test-key?)
-	    (setf params (append params (list '&key))))
-	  (create-keyword-param first-only first-only-key? first-only-val)
-	  (create-keyword-param test test-key? test-val)
-	  `(defmethod ,name ,params
-	     (macrolet ((%bst-remove-x (bst)
-			  `(,',name x ,bst ,,@remove-args))
+	   (defun ,function-name ,params
+	     (macrolet ((%bst-insert-x (bst)
+			  `(,',function-name x ,bst ,,@insert-args))
 			(%make-bst (l v r)
-			  `(,',constructor :left ,l :value ,v :right ,r))
-			(%when-not-empty (bst-remove-form)
-			  `(multiple-value-bind (next empty) ,bst-remove-form
-			     (when (not empty) next))))
+			  `(,',constructor :left ,l :value ,v :right ,r)))
 	       (with-slots ((l left) (v value) (r right)) tr
 		 ,@(when test-key? `((when (not test) (setf test ,test))))
-		 (cond ((null v) (values (,constructor) t))
+		 (cond ((null v) (,constructor :value x))
 		       ((funcall ,test-form v x)
+			(%make-bst l v (if (null r)
+					   (,constructor :value x)
+					   (%bst-insert-x r))))
+		       (,(if (not uniques-key?)
+			     (if uniques-val
+				 `(funcall ,test-form x v)
+				 't)
+			     `(or (not unique-only)
+				  (funcall ,test-form x v)))
+			(%make-bst (if (null l)
+				       (,constructor :value x)
+				       (%bst-insert-x l))
+				   v
+				   r))
+		       ,@(if (or uniques-key? uniques-val)
+			     (cond (overwrite-key?
+				    '((t (if overwrite (%make-bst l x r) tr))))
+				   (overwrite-val '((t (%make-bst l x r))))
+				   (t '((t tr)))))))))
+	   (defmethod ,name ,method-params
+	     (,function-name x tr ,@method-args)))))
+
+    (defun make-remove-method (name first-only-key? test-key?
+			       &key first-only-val test-val)
+      (let ((function-name
+	     (intern (concatenate 'string (symbol-name name)
+				  "-" id "-FN")))
+	    (remove-args nil)
+	    (method-args nil)
+	    (params '(x tr))
+	    (method-params  `((x ,element-type) (tr ,struct)))
+	    (test-form (cond (test-key? 'test)
+			     (test-val test-val)
+			     (t test))))
+	(when (or first-only-key? test-key?)
+	  (setf method-params (append method-params (list '&key)))
+	  (setf params (append params (list '&key))))
+	(macrolet ((create-keyword-param (name include? default)
+		     `(when ,include?
+			(let ((next-param (if ,default
+					      (list ',name ,default)
+					      ',name)))
+			  (setf params (append params (list next-param)))
+			  (setf method-params
+				(append method-params (list next-param))))
+			(setf remove-args
+			      (append remove-args
+				      (list '',(intern (symbol-name name)
+						       "KEYWORD")
+					    '',name)))
+			(setf method-args
+			      (append method-args
+				      (list ',(intern (symbol-name name)
+						      "KEYWORD")
+					    ',name))))))
+	  (create-keyword-param first-only first-only-key? first-only-val)
+	  (create-keyword-param test test-key? test-val)
+	  `(progn
+	     (defun ,function-name ,params
+	       (macrolet ((%bst-remove-x (bst)
+			    `(,',function-name x ,bst ,,@remove-args))
+			  (%make-bst (l v r)
+			    `(,',constructor :left ,l :value ,v :right ,r))
+			  (%when-not-empty (bst-remove-form)
+			    `(multiple-value-bind (next empty) ,bst-remove-form
+			       (when (not empty) next))))
+		 (with-slots ((l left) (v value) (r right)) tr
+		   ,@(when test-key? `((when (not test) (setf test ,test))))
+		   (cond ((null v) (values (,constructor) t))
+			 ((funcall ,test-form v x)
 			(values (%make-bst l v (when r (%when-not-empty
 							(%bst-remove-x r))))
 				nil))
-		       ((funcall ,test-form x v)
-			(values (%make-bst (when l (%when-not-empty
-						    (%bst-remove-x l))) v r)
-				nil))
-		       ((and (null l) (null r)) (values (,constructor) t))
-		       ((null l) ,(cond (first-only-key? '(if first-only
-							   (values r nil)
-							   (%bst-remove-x r)))
-					(first-only-val '(values r nil))
-					(t '(%bst-remove-x r))))
-		       ((null r) ,(cond (first-only-key? '(if first-only
-							   (values l nil)
-							   (%bst-remove-x l)))
-					(first-only-val	 '(values l nil))
-					(t '(%bst-remove-x l))))
-		       (t (let* ((nextv (bst-min r)))
-			    (values (%make-bst
-				     ,(cond (first-only-key?
-					     '(if first-only
-					       l
-					       (%when-not-empty
-						(%bst-remove-x l))))
-					    (first-only-val
-					     'l)
-					    (t '(%when-not-empty
-						 (%bst-remove-x l))))
-				     nextv
-				     (%when-not-empty
-				      (,name nextv r
-					     ,@(when first-only-key?
-						     '(:first-only t))
-					     ,@(when test-key?
-						     '(:test test)))))
-				    nil))))))))))
+			 ((funcall ,test-form x v)
+			  (values (%make-bst (when l (%when-not-empty
+						      (%bst-remove-x l))) v r)
+				  nil))
+			 ((and (null l) (null r)) (values (,constructor) t))
+			 ((null l)
+			  ,(cond (first-only-key? '(if first-only
+						    (values r nil)
+						    (%bst-remove-x r)))
+				 (first-only-val '(values r nil))
+				 (t '(%bst-remove-x r))))
+			 ((null r)
+			  ,(cond (first-only-key? '(if first-only
+						    (values l nil)
+						    (%bst-remove-x l)))
+				 (first-only-val '(values l nil))
+				 (t '(%bst-remove-x l))))
+			 (t (let* ((nextv (bst-min r)))
+			      (values (%make-bst
+				       ,(cond (first-only-key?
+					       '(if first-only
+						 l
+						 (%when-not-empty
+						  (%bst-remove-x l))))
+					      (first-only-val 'l)
+					      (t '(%when-not-empty
+						   (%bst-remove-x l))))
+				       nextv
+				       (%when-not-empty
+					(,name nextv r
+					       ,@(when first-only-key?
+						       '(:first-only t))
+					       ,@(when test-key?
+						       '(:test test)))))
+				      nil)))))))
+	     (defmethod ,name ,method-params
+	       (,function-name x tr ,@method-args))))))
     
     `(progn
        (deftype ,type () '(or null ,struct))
@@ -429,70 +458,14 @@
 	 ,test)
 
        ,(make-insert-method 'bst-insert t t t :overwrite-val nil)
-       ;; (defmethod bst-insert ((x ,element-type) (tr ,struct)
-       ;; 			      &key unique-only overwrite test)
-       ;; 	 "Nondestructive insert of value X into binary search tree TR."
-       ;; 	 (macrolet ((%bst-insert-x (bst)
-       ;; 		      `(bst-insert x ,bst
-       ;; 				   :unique-only unique-only
-       ;; 				   :overwrite overwrite
-       ;; 				   :test test))
-       ;; 		    (%make-bst (l v r)
-       ;; 		      `(,',constructor :left ,l :value ,v :right ,r)))
-       ;; 	   (with-slots ((l left) (v value) (r right)) tr
-       ;; 	     (when (not test) (setf test ,test))
-       ;; 	     (cond ((null v) (,constructor :value x))
-       ;; 		   ((funcall test v x)
-       ;; 		    (%make-bst l v (if (null r)
-       ;; 				       (,constructor :value x)
-       ;; 				       (%bst-insert-x r))))
-       ;; 		   ((or (not unique-only)
-       ;; 			(funcall test x v))
-       ;; 		    (%make-bst (if (null l)
-       ;; 				   (,constructor :value x)
-       ;; 				   (%bst-insert-x l))
-       ;; 			       v
-       ;; 			       r))
-       ;; 		   (t (if overwrite (%make-bst l x r) tr))))))
+       ;;  "Nondestructive insert of value X into binary search tree TR."
 
        ;; ,(make-insert-method 'bst-fast-insert nil nil nil)
-       ;; (defmethod bst-fast-insert ((x ,element-type) (tr ,struct))
-       ;;  "Noncustomized bst-insert but faster, with only implicit comparisons"
-       ;; 	 (macrolet ((%bst-insert-x (bst)
-       ;; 		      `(bst-fast-insert x ,bst))
-       ;; 		    (%make-bst (l v r)
-       ;; 		      `(,',constructor :left ,l :value ,v :right ,r)))
-       ;; 	   (with-slots ((l left) (v value) (r right)) tr
-       ;; 	     (cond ((null v) (,constructor :value x))
-       ;; 		   ((funcall ,test v x)
-       ;; 		    (%make-bst l v (if (null r)
-       ;; 				       (,constructor :value x)
-       ;; 				       (%bst-insert-x r))))
-       ;; 		   (t (%make-bst (if (null l)
-       ;; 				   (,constructor :value x)
-       ;; 				   (%bst-insert-x l))
-       ;; 			       v
-       ;; 			       r))))))
+       ;;  "Uncustomizable faster bst-insert, with only implicit comparisons"
 
-       ,(make-insert-method 'bst-set-insert nil nil nil :uniques-val t :overwrite-val t)
-       ;; (defmethod bst-set-insert ((x ,element-type) (tr ,struct))
-       ;; 	 "Nondestructive overwriting set insert of X into bst TR."
-       ;; 	 (macrolet ((%bst-insert-x (bst) `(bst-set-insert x ,bst))
-       ;; 		    (%make-bst (l v r)
-       ;; 		      `(,',constructor :left ,l :value ,v :right ,r)))
-       ;; 	   (with-slots ((l left) (v value) (r right)) tr
-       ;; 	     (cond ((null v) (,constructor :value x))
-       ;; 		   ((funcall ,test v x)
-       ;; 		    (%make-bst l v (if (null r)
-       ;; 				       (,constructor :value x)
-       ;; 				       (%bst-insert-x r))))
-       ;; 		   ((funcall ,test x v)
-       ;; 		    (%make-bst (if (null l)
-       ;; 				   (,constructor :value x)
-       ;; 				   (%bst-insert-x l))
-       ;; 			       v
-       ;; 			       r))
-       ;; 		   (t (%make-bst l x r))))))
+       ,(make-insert-method 'bst-set-insert nil nil nil
+			    :uniques-val t :overwrite-val t)
+       ;;  "Nondestructive overwriting set insert of X into bst TR."
        
        (defmethod bst-min ((tr ,struct))
 	 "Find the minimum (leftmost branch) value in the given bst TR."
@@ -509,37 +482,7 @@
 	       (bst-max r))))
 
        ,(make-remove-method 'bst-remove t t :first-only-val t)
-       ;; (defmethod bst-remove ((x ,element-type) (tr ,struct)
-       ;; 			      &key (first-only t) test)
-       ;; 	 "Return a copy of the bst TR sans elements matching X."
-       ;; 	 (macrolet ((%bst-remove-x (bst)
-       ;; 		      `(bst-remove x ,bst :first-only first-only :test test))
-       ;; 		    (%make-bst (l v r)
-       ;; 		      `(,',constructor :left ,l :value ,v :right ,r))
-       ;; 		    (%when-not-empty (bst-remove-form)
-       ;; 		      `(multiple-value-bind (next empty) ,bst-remove-form
-       ;; 			 (when (not empty) next))))
-       ;; 	   (with-slots ((l left) (v value) (r right)) tr
-       ;; 	     (when (not test) (setf test ,test))
-       ;; 	     (cond ((null v) (values (,constructor) t))
-       ;; 		   ((funcall test v x)
-       ;; 		    (values (%make-bst l v (when r (%when-not-empty
-       ;; 						    (%bst-remove-x r)))) nil))
-       ;; 		   ((funcall test x v)
-       ;; 		    (values (%make-bst (when l (%when-not-empty
-       ;; 						(%bst-remove-x l))) v r) nil))
-       ;; 		   ((and (null l) (null r)) (values (,constructor) t))
-       ;; 		   ((null l) (if first-only (values r nil) (%bst-remove-x r)))
-       ;; 		   ((null r) (if first-only (values l nil) (%bst-remove-x l)))
-       ;; 		   (t (let* ((nextv (bst-min r)))
-       ;; 			(values
-       ;; 			 (%make-bst
-       ;; 			  (if first-only l (%when-not-empty (%bst-remove-x l)))
-       ;; 			  nextv
-       ;; 			  (%when-not-empty (bst-remove nextv r
-       ;; 						       :first-only t
-       ;; 						       :test test)))
-       ;; 			 nil)))))))
+       ;;  "Return a copy of the bst TR sans elements matching X."
        
        (defmethod bst-clear ((tr ,struct))
 	 "Return an empty binary search tree of the same type as TR."
@@ -555,6 +498,18 @@
 		 ((funcall test v x)
 		  (when (not (null r)) (bst-member x r test)))
 		 (t tr))))
+
+       (defmethod bst-fast-member ((x ,element-type) (tr ,struct))
+	 "With implicit comparisons, find subtree of TR containing element X."
+	 (labels ((bst-fast-member-fn (x tr)
+		    (with-slots ((l left) (v value) (r right)) tr
+		      (cond ((null v) nil)
+			    ((funcall ,test x v)
+			     (When (not (null l)) (bst-fast-member-fn x l)))
+			    ((funcall ,test v x)
+			     (when (not (null r)) (bst-fast-member-fn x r)))
+			    (t tr)))))
+	   (bst-fast-member-fn x tr)))
        
        (defmethod bst-empty ((tr ,struct))
 	 "Return whether the given binary search tree TR is empty."
@@ -570,17 +525,18 @@
 	    (when (not (null l)) (bst-to-list l))
 	    (list v)
 	    (when (not (null r)) (bst-to-list r)))))
-
+       
        (defmethod bst-insert-list (lst (tr ,struct)
 				   &key unique-only overwrite test as-set)
 	 "Insert all values from LST into the bst TR."
 	 (macrolet ((bst-update (bst)
 		      `(if as-set
-			   (bst-set-insert (elt lst i) ,bst)
-			   (bst-insert (elt lst i) ,bst
-						   :unique-only unique-only
-						   :overwrite overwrite
-						   :test test))))
+			   (,',bst-set-insert-fn
+				    (elt lst i) ,bst)
+			   (,',bst-insert-fn (elt lst i) ,bst
+					   :unique-only unique-only
+					   :overwrite overwrite
+					   :test test))))
 	   (do* ((i 0 (+ i 1))
 		 (bst (bst-update tr) (bst-update bst)))
 		((= i (- (length lst) 1)) bst))))

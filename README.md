@@ -262,6 +262,29 @@ If found, retrieve the subtree of binary search tree TR containing element X.
      :RIGHT NIL)
 ```
 
+### bst-fast-member (x tr)
+With implicit comparisons, find subtree of TR containing element X.
+
+#### Parameters:
+   X: The element (of type ELEMENT-TYPE) for which to search  
+   TR: The binary search tree in which X is to be sought  
+
+#### Returns:
+   BST with the root node containing a match of X, or NIL if not found.
+
+#### Example:
+```
+  > (bst-member "foo" *t*)
+  NIL
+  > (bst-member "hello" *t*)
+  #S(BST-1173 :LEFT NIL :VALUE "hello" :RIGHT NIL)
+  > (bst-member "world" *t*)
+  #S(BST-1173
+     :LEFT #S(BST-1173 :LEFT NIL :VALUE "hello" :RIGHT NIL)
+     :VALUE "world"
+     :RIGHT NIL)
+```
+
 ### bst-empty (tr)
 Return whether the given binary search tree TR is empty.
 
