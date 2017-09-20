@@ -284,8 +284,7 @@
   (let* ((type (intern (concatenate 'string "BST-NODE-" id)))
 	 (elem-type (intern (concatenate 'string "BST-ELEM-" id)))
 	 (struct (intern (concatenate 'string "BST-" id)))
-	 (bst-insert-fn
-	  (intern (concatenate 'string "BST-INSERT-" id "-FN")))
+	 (bst-insert-fn (intern (concatenate 'string "BST-INSERT-" id "-FN")))
 	 (bst-set-insert-fn
 	  (intern (concatenate 'string "BST-SET-INSERT-" id "-FN"))))
     
@@ -355,7 +354,7 @@
 				   (t '((t tr)))))))))
 	   (defmethod ,name ,method-params
 	     (,function-name x tr ,@method-args)))))
-
+    
     (defun make-remove-method (name first-only-key? test-key?
 			       &key first-only-val test-val)
       (let ((function-name
@@ -404,9 +403,9 @@
 		   ,@(when test-key? `((when (not test) (setf test ,test))))
 		   (cond ((null v) (values (,constructor) t))
 			 ((funcall ,test-form v x)
-			(values (%make-bst l v (when r (%when-not-empty
-							(%bst-remove-x r))))
-				nil))
+			  (values (%make-bst l v (when r (%when-not-empty
+							  (%bst-remove-x r))))
+				  nil))
 			 ((funcall ,test-form x v)
 			  (values (%make-bst (when l (%when-not-empty
 						      (%bst-remove-x l))) v r)
