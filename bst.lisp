@@ -529,17 +529,14 @@
        (defmethod bst-insert-list (lst (tr ,struct)
 				   &key unique-only overwrite test as-set)
 	 "Insert all values from LST into the bst TR."
-	 (macrolet ((bst-update (bst)
+	 (macrolet ((bst-update (x bst)
 		      `(if as-set
-			   (,',bst-set-insert-fn
-				    (elt lst i) ,bst)
-			   (,',bst-insert-fn (elt lst i) ,bst
-					   :unique-only unique-only
-					   :overwrite overwrite
-					   :test test))))
-	   (do* ((i 0 (+ i 1))
-		 (bst (bst-update tr) (bst-update bst)))
-		((= i (- (length lst) 1)) bst))))
+			   (,',bst-set-insert-fn ,x ,bst)
+			   (,',bst-insert-fn ,x ,bst
+					     :unique-only unique-only
+					     :overwrite overwrite
+					     :test test))))
+	   (dolist (x lst tr) (setf tr (bst-update x tr)))))
        
        (defmethod bst-constructor ((tr ,struct))
 	 "Return the function used to construct instances of the type of TR."
