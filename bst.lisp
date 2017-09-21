@@ -318,7 +318,7 @@
 		      :id ,id
 		      :constructor ,constructor)))))
 
-(defmacro kwarg-cond (use-kw?-var kw-default-var
+(defmacro kwarg-cond ((use-kw?-var kw-default-var)
 		      if-specifiable-code
 		      if-specified-code
 		      default-code)
@@ -387,7 +387,7 @@
 			(%make-bst l v (if (null r)
 					   (,constructor :value x)
 					   (%bst-insert-x r))))
-		       (,(kwarg-cond uniques-key? uniques-val
+		       (,(kwarg-cond (uniques-key? uniques-val)
 				     `(or (not unique-only)
 					  (funcall ,test-form x v))
 				     `(funcall ,test-form x v)
@@ -398,10 +398,12 @@
 				   v
 				   r))
 		       ,@(if (or uniques-key? uniques-val)
-			     (kwarg-cond overwrite-key? overwrite-val
-				 '((t (if overwrite (%make-bst l x r) tr)))
-				 '((t (%make-bst l x r)))
-				 '((t tr))))))))
+			     (kwarg-cond (overwrite-key? overwrite-val)
+					 '((t (if overwrite
+						  (%make-bst l x r)
+						  tr)))
+					 '((t (%make-bst l x r)))
+					 '((t tr))))))))
 	   (defmethod ,name ,method-params
 	     (declare (,element-type x) (,struct tr))
 	     (,function-name x tr ,@method-args)))))
@@ -464,38 +466,34 @@
 				  nil))
 			 ((and (null l) (null r)) (values (,constructor) t))
 			 ((null l)
-			  ,(kwarg-cond first-only-key? first-only-val
-			       '(if first-only
-				 (values r nil)
-				 (%bst-remove-x r))
-			       '(values r nil)
-			       '(%bst-remove-x r)))
+			  ,(kwarg-cond
+			    (first-only-key? first-only-val)
+			    '(if first-only (values r nil) (%bst-remove-x r))
+			    '(values r nil)
+			    '(%bst-remove-x r)))
 			 ((null r)
-			  ,(kwarg-cond first-only-key? first-only-val
-			       '(if first-only
-				 (values l nil)
-				 (%bst-remove-x l))
-			       '(values l nil)
-			       '(%bst-remove-x l)))
-			 (t (let* ((nextv (bst-min r)))
-			      (values (%make-bst
-				       ,(kwarg-cond first-only-key?
-						    first-only-val
-					    '(if first-only
-					      l
-					      (%when-not-empty
-					       (%bst-remove-x l)))
-					    'l
-					    '(%when-not-empty
-					      (%bst-remove-x l)))
-				       nextv
-				       (%when-not-empty
-					(,bst-remove-fn
-					 nextv r
-					 :first-only t
-					 ,@(when test-key?
-						 '(:test test)))))
-				      nil)))))))
+			  ,(kwarg-cond
+			    (first-only-key? first-only-val)
+			    '(if first-only (values l nil) (%bst-remove-x l))
+			    '(values l nil)
+			    '(%bst-remove-x l)))
+			 (t
+			  (let* ((nextv (bst-min r)))
+			    (values
+			     (%make-bst
+			         ,(kwarg-cond
+				   (first-only-key? first-only-val)
+				   '(if first-only
+				        l
+				        (%when-not-empty (%bst-remove-x l)))
+				   'l
+				   '(%when-not-empty (%bst-remove-x l)))
+				 nextv
+				 (%when-not-empty
+				  (,bst-remove-fn nextv r :first-only t
+						  ,@(when test-key?
+							  '(:test test)))))
+			     nil)))))))
 	     (defmethod ,name ,method-params
 	       (declare (,element-type x) (,struct tr))
 	       (,function-name x tr ,@method-args))))))
