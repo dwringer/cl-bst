@@ -41,6 +41,8 @@
 	   :bst-fast-insert
 	   :bst-set-insert
 	   :bst-remove
+	   :bst-fast-remove
+	   :bst-set-remove
 	   :bst-clear
 	   :bst-member
 	   :bst-fast-member
@@ -177,18 +179,38 @@
 ;;    Maximum value contained in the binary search tree TR.
 
 (defgeneric bst-remove (x tr &key first-only test))
-;;  Return a copy of the bst TR sans elements matching X.
+;;  Return a copy of the bst TR sans element[s] matching X.
 ;;
 ;;   Parameters:
 ;;     X: Element against which to match candidates for deletion
-;;     TR: Binary search tree from which to remove elements matching X
+;;     TR: Binary search tree from which to remove element[s] matching X
 ;;
 ;;   Keyword parameters:
 ;;     FIRST-ONLY: If true, only remove the first matching element
 ;;     TEST: If present, overrides the BST's comparison function
 ;;
 ;;   Returns:
+;;     A bst created from nodes of TR with match[es] of X removed.
+
+(defgeneric bst-fast-remove (x tr))
+;;  Return a copy of the bst TR sans all elements matching X.
+;;
+;;   Parameters:
+;;     X: Element against which to match candidates for deletion
+;;     TR: Binary search tree from which to remove elements matching X
+;;
+;;   Returns:
 ;;     A bst created from nodes of TR with matches of X removed.
+
+(defgeneric bst-set-remove (x tr))
+;;  Return a copy of the bst TR sans an element matching X.
+;;
+;;   Parameters:
+;;     X: Element against which to match candidate for deletion
+;;     TR: Binary search tree from which to remove element matching X
+;;
+;;   Returns:
+;;     A bst created from nodes of TR with first match of X removed.
 
 (defgeneric bst-clear (tr))
 ;;  Return an empty binary search tree of the same type as TR.
@@ -312,7 +334,9 @@
 	 (bst-set-insert-fn
 	  (intern (concatenate 'string "BST-SET-INSERT-" id "-FN")))
 	 (bst-fast-insert-fn
-	  (intern (concatenate 'string "BST-FAST-INSERT-" id "-FN"))))
+	  (intern (concatenate 'string "BST-FAST-INSERT-" id "-FN")))
+	 (bst-remove-fn
+	  (intern (concatenate 'string "BST-REMOVE-" id "-FN"))))
     
     (defun make-insert-method (name uniques-key? overwrite-key? test-key?
 			       &key uniques-val (overwrite-val t) test-val)
@@ -466,11 +490,11 @@
 					      (%bst-remove-x l)))
 				       nextv
 				       (%when-not-empty
-					(,name nextv r
-					       ,@(when first-only-key?
-						       '(:first-only t))
-					       ,@(when test-key?
-						       '(:test test)))))
+					(,bst-remove-fn
+					 nextv r
+					 :first-only t
+					 ,@(when test-key?
+						 '(:test test)))))
 				      nil)))))))
 	     (defmethod ,name ,method-params
 	       (declare (,element-type x) (,struct tr))
@@ -514,6 +538,10 @@
 
        ,(make-remove-method 'bst-remove t t :first-only-val t)
        ;;  "Return a copy of the bst TR sans elements matching X."
+
+       ,(make-remove-method 'bst-fast-remove nil nil :first-only-val nil)
+
+       ,(make-remove-method 'bst-set-remove nil nil :first-only-val t)
        
        (defmethod bst-clear ((tr ,struct))
 	 "Return an empty binary search tree of the same type as TR."
@@ -719,5 +747,17 @@
 					   (push (random 10000000) lst)))
 			(make-bst :element-type integer)
 			(orig) (result)
-	(assert (equal 1000000 (length (bst-to-list result))))))))
+	(assert (equal 1000000 (length (bst-to-list result)))))
+
+       (test-pre-method bst-insert-list
+			((list 5 3 45 7 4 6 3 66 33 56 34 872 7 1 5 3 4 7 6 8))
+			(make-bst)
+			(orig) (result)
+	(assert (equal '(1 3 3 3 4 4 5 5 6 6 7 7 7 8 33 34 45 56 66 872)
+		       (bst-to-list result)))
+	(assert
+	 (equal '(1 3 3 3 4 4 5 5 7 7 7 8 33 34 45 56 66 872)
+		(bst-to-list (bst-fast-remove 6 result)))
+	 
+	 )))))
 

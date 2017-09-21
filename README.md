@@ -223,23 +223,55 @@ Find the maximum (rightmost branch) value in the given bst TR.
   "world"
 ```
 
-### bst-remove (x tr &key (first-only t) test)
-Return a copy of the bst TR sans elements matching X.
+### bst-remove (x tr &key (first-only t) test))
+Return a copy of the bst TR sans element[s] matching X.
+
+#### Parameters:
+   X: Element against which to match candidates for deletion  
+   TR: Binary search tree from which to remove element[s] matching X  
+
+#### Keyword parameters:
+   FIRST-ONLY: If true, only remove the first matching element  
+   TEST: If present, overrides the BST's comparison function  
+
+#### Returns:
+   A bst created from nodes of TR with match[es] of X removed.
+
+#### Example:
+```
+  > (bst-remove "world" *t*)
+  #S(BST-1173 :LEFT NIL :VALUE "hello" :RIGHT NIL)
+```
+
+### bst-fast-remove (x tr))
+Return a copy of the bst TR sans all elements matching X.
 
 #### Parameters:
    X: Element against which to match candidates for deletion  
    TR: Binary search tree from which to remove elements matching X  
-   
-#### Keyword parameters:
-   FIRST-ONLY: If true, only remove the first matching element  
-   TEST: If present, overrides the BST's comparison function  
 
 #### Returns:
    A bst created from nodes of TR with matches of X removed.
 
 #### Example:
 ```
-  > (bst-remove "world" *t*)
+  > (bst-fast-remove "world" *t*)
+  #S(BST-1173 :LEFT NIL :VALUE "hello" :RIGHT NIL)
+```
+
+### bst-set-remove (x tr))
+Return a copy of the bst TR sans an element matching X.
+
+#### Parameters:
+   X: Element against which to match candidate for deletion  
+   TR: Binary search tree from which to remove element matching X  
+
+#### Returns:
+   A bst created from nodes of TR with first match of X removed.
+
+#### Example:
+```
+  > (bst-set-remove "world" *t*)
   #S(BST-1173 :LEFT NIL :VALUE "hello" :RIGHT NIL)
 ```
 

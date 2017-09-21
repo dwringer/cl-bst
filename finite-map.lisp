@@ -193,7 +193,7 @@
 				     (fm ,struct))
 	 "Return finite map copy w/its BST stripped of records w/key K"
 	 (,constructor
-	  :bst (bst:bst-remove (,record-constructor :key k)
+	  :bst (bst:bst-set-remove (,record-constructor :key k)
 			       (slot-value fm 'fm::bst))))
        
        (defmethod finite-map-lookup ((k ,key-element-type)
